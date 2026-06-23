@@ -1205,3 +1205,317 @@ CREATE TYPE external_access.access_status AS ENUM
 
 COMMENT ON TYPE external_access.access_status
 IS 'External account lifecycle';
+
+
+-- =============================================================================
+-- AUDIT EVENT CATEGORY
+-- =============================================================================
+
+CREATE TYPE audit.audit_event_category AS ENUM
+(
+    'authentication',
+    'authorization',
+    'master_file',
+    'claimant',
+    'attorney',
+    'medical_expert',
+    'appointment',
+    'assessment',
+    'report',
+    'document',
+    'finance',
+    'aod',
+    'notification',
+    'external_access',
+    'system_configuration',
+    'integration',
+    'database',
+    'security',
+    'administration'
+);
+
+COMMENT ON TYPE audit.audit_event_category
+IS 'High level audit event grouping';
+
+-- =============================================================================
+-- AUDIT EVENT TYPE
+-- =============================================================================
+
+CREATE TYPE audit.audit_event_type AS ENUM
+(
+    'create',
+    'update',
+    'delete',
+    'restore',
+    'view',
+    'download',
+    'upload',
+    'approve',
+    'reject',
+    'assign',
+    'reassign',
+    'schedule',
+    'reschedule',
+    'cancel',
+    'login',
+    'logout',
+    'password_change',
+    'password_reset',
+    'mfa_enabled',
+    'mfa_disabled',
+    'permission_granted',
+    'permission_revoked',
+    'record_locked',
+    'record_unlocked',
+    'export',
+    'import'
+);
+
+COMMENT ON TYPE audit.audit_event_type
+IS 'Enterprise audit actions';
+
+-- =============================================================================
+-- AUDIT SEVERITY
+-- =============================================================================
+
+CREATE TYPE audit.audit_severity AS ENUM
+(
+    'informational',
+    'low',
+    'medium',
+    'high',
+    'critical'
+);
+
+COMMENT ON TYPE audit.audit_severity
+IS 'Audit severity';
+
+-- =============================================================================
+-- BACKGROUND JOB STATUS
+-- =============================================================================
+
+CREATE TYPE workflow.job_status AS ENUM
+(
+    'queued',
+    'running',
+    'completed',
+    'failed',
+    'retrying',
+    'cancelled'
+);
+
+COMMENT ON TYPE workflow.job_status
+IS 'Background worker execution status';
+
+-- =============================================================================
+-- JOB PRIORITY
+-- =============================================================================
+
+CREATE TYPE workflow.job_priority AS ENUM
+(
+    'low',
+    'normal',
+    'high',
+    'critical'
+);
+
+COMMENT ON TYPE workflow.job_priority
+IS 'Background job priority';
+
+-- =============================================================================
+-- API STATUS
+-- =============================================================================
+
+CREATE TYPE integrations.api_status AS ENUM
+(
+    'offline',
+    'online',
+    'maintenance',
+    'degraded',
+    'error'
+);
+
+COMMENT ON TYPE integrations.api_status
+IS 'External integration status';
+
+-- =============================================================================
+-- API DIRECTION
+-- =============================================================================
+
+CREATE TYPE integrations.api_direction AS ENUM
+(
+    'incoming',
+    'outgoing',
+    'bidirectional'
+);
+
+COMMENT ON TYPE integrations.api_direction
+IS 'Integration communication direction';
+
+-- =============================================================================
+-- API AUTHENTICATION
+-- =============================================================================
+
+CREATE TYPE integrations.authentication_type AS ENUM
+(
+    'api_key',
+    'oauth2',
+    'jwt',
+    'basic_auth',
+    'mutual_tls'
+);
+
+COMMENT ON TYPE integrations.authentication_type
+IS 'Integration authentication method';
+
+-- =============================================================================
+-- DASHBOARD WIDGET
+-- =============================================================================
+
+CREATE TYPE dashboard.widget_type AS ENUM
+(
+    'statistic',
+    'chart',
+    'calendar',
+    'timeline',
+    'activity_feed',
+    'table',
+    'notification_panel',
+    'kpi',
+    'financial_summary',
+    'appointment_summary'
+);
+
+COMMENT ON TYPE dashboard.widget_type
+IS 'Dashboard widget types';
+
+-- =============================================================================
+-- DASHBOARD PERIOD
+-- =============================================================================
+
+CREATE TYPE dashboard.reporting_period AS ENUM
+(
+    'today',
+    'week',
+    'month',
+    'quarter',
+    'year',
+    'custom'
+);
+
+COMMENT ON TYPE dashboard.reporting_period
+IS 'Dashboard reporting periods';
+
+-- =============================================================================
+-- ANALYTICS STATUS
+-- =============================================================================
+
+CREATE TYPE analytics.analytics_status AS ENUM
+(
+    'collecting',
+    'processing',
+    'available',
+    'archived'
+);
+
+COMMENT ON TYPE analytics.analytics_status
+IS 'Analytics processing status';
+
+-- =============================================================================
+-- PWA SYNC STATUS
+-- =============================================================================
+
+CREATE TYPE system_config.sync_status AS ENUM
+(
+    'pending',
+    'syncing',
+    'synchronised',
+    'failed',
+    'conflict'
+);
+
+COMMENT ON TYPE system_config.sync_status
+IS 'Progressive Web App synchronization status';
+
+-- =============================================================================
+-- OFFLINE ACTION
+-- =============================================================================
+
+CREATE TYPE system_config.offline_operation AS ENUM
+(
+    'create',
+    'update',
+    'delete',
+    'upload',
+    'download'
+);
+
+COMMENT ON TYPE system_config.offline_operation
+IS 'Offline queue operations';
+
+-- =============================================================================
+-- SYSTEM ENVIRONMENT
+-- =============================================================================
+
+CREATE TYPE system_config.environment AS ENUM
+(
+    'development',
+    'testing',
+    'staging',
+    'production'
+);
+
+COMMENT ON TYPE system_config.environment
+IS 'Application environment';
+
+-- =============================================================================
+-- FEATURE FLAG STATUS
+-- =============================================================================
+
+CREATE TYPE system_config.feature_status AS ENUM
+(
+    'enabled',
+    'disabled',
+    'beta',
+    'internal_only'
+);
+
+COMMENT ON TYPE system_config.feature_status
+IS 'Enterprise feature flags';
+
+-- =============================================================================
+-- DATA RETENTION POLICY
+-- =============================================================================
+
+CREATE TYPE system_config.retention_policy AS ENUM
+(
+    'one_year',
+    'three_years',
+    'five_years',
+    'seven_years',
+    'ten_years',
+    'permanent'
+);
+
+COMMENT ON TYPE system_config.retention_policy
+IS 'Enterprise data retention rules';
+
+-- =============================================================================
+-- DEPLOYMENT VERIFICATION
+-- =============================================================================
+
+DO
+$$
+BEGIN
+
+    RAISE NOTICE '';
+    RAISE NOTICE '==============================================';
+    RAISE NOTICE 'Kutlwano Enterprise ENUM Library Installed';
+    RAISE NOTICE '002_enums.sql Completed Successfully';
+    RAISE NOTICE '==============================================';
+    RAISE NOTICE '';
+
+END;
+$$;
+
+COMMIT;
