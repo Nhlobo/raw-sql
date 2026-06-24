@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: kutlwano
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: change-me
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d:ro
+  api:
+    build: .
+    env_file: .env
+    ports: ["4000:4000"]
+    depends_on: [postgres]
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports: ["80:80"]
+    depends_on: [api]
