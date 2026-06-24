@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: kutlwano-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /ready
+  - type: static
+    name: kutlwano-internal-pwa
+    buildCommand: pnpm install --frozen-lockfile=false && pnpm --filter @kutlwano/internal-pwa build
+    staticPublishPath: apps/internal-pwa/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+  - type: static
+    name: kutlwano-external-pwa
+    buildCommand: pnpm install --frozen-lockfile=false && pnpm --filter @kutlwano/external-pwa build
+    staticPublishPath: apps/external-pwa/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
