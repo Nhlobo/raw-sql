@@ -1,0 +1,9 @@
+services:
+  - type: static
+    name: raw-sql-2-external-pwa
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
