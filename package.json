@@ -1,0 +1,1 @@
+{"name":"kutlwano-medico-legal-platform","private":true,"version":"1.0.0","description":"Kutlwano & Associate internal and external medico-legal PWAs backed by the supplied PostgreSQL schema.","scripts":{"validate":"node scripts/validate-platform.mjs","test":"npm run validate"},"workspaces":["apps/internal","apps/external","packages/shared"],"engines":{"node":">=20"}}
