@@ -1,16 +1,18 @@
-# Kutlwano & Associate Medico-Legal Platform
+# Kutlwano & Associate Medico-Legal Internal System
 
-This repository contains two separate installable Progressive Web Applications that share the supplied PostgreSQL database modules in `database/`.
+This repository is the internal Render-ready Progressive Web Application for Kutlwano & Associate Medico-Legal operations.
 
-## Applications
+## Application
 
 - `apps/internal` — Internal Enterprise PWA for Kutlwano employees and operational roles.
-- `apps/external` — External Client PWA for attorneys, medical experts, claimants, RAF representatives, insurers, and corporate clients.
-- `packages/shared` — Shared configuration, role catalogues, schema module manifest, security policy definitions, navigation metadata, and utility services consumed by both PWAs.
+- `packages/shared` — Shared configuration, role catalogues, schema module manifest, security policy definitions, navigation metadata, and utility services consumed by the internal PWA.
+- `database` — The 21 supplied deployment-ready PostgreSQL SQL modules used as the source-of-truth schema contract.
 
-## Database
+The external client PWA has been separated into its own repository so the two surfaces can be deployed independently.
 
-The platform uses only the 21 supplied deployment-ready SQL modules in `database/`. Application code references the existing schemas and tables through metadata and API contracts; it does not redesign, rename, or duplicate database entities.
+## Render deployment
+
+This repo includes `render.yaml` for a static site deployment. Render should publish `apps/internal` and use the repository root as the working directory.
 
 ## Validation
 
@@ -18,4 +20,4 @@ The platform uses only the 21 supplied deployment-ready SQL modules in `database
 npm run validate
 ```
 
-The validation script checks that both PWAs include required PWA assets, local CSS, security metadata, role navigation, and references to all 21 SQL modules.
+The validation script checks the internal PWA assets, local CSS, security metadata, role navigation, and references to all 21 SQL modules.
