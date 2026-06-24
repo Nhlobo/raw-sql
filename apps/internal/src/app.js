@@ -13,4 +13,6 @@ function render() {
 }
 
 window.addEventListener('load', async () => { render(); if ('serviceWorker' in navigator) await navigator.serviceWorker.register('/sw.js'); });
-window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); document.addEventListener('click', e => { if (e.target?.id === 'install') event.prompt(); }, { once: true }); });
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); deferredPrompt = event; });
+document.addEventListener('click', e => { if (e.target?.id === 'install' && deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; } });
