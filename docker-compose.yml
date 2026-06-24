@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: kutlwano
       POSTGRES_USER: app
-      POSTGRES_PASSWORD: change-me
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set-postgres-password}
     volumes:
       - ./database:/docker-entrypoint-initdb.d:ro
   api:
