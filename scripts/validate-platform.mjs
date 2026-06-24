@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { databaseModules, internalRoles, externalRoles, securityControls } from '../packages/shared/src/platform.js';
+
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { databaseModules, internalRoles, securityControls } from '../packages/shared/src/platform.js';
-
-const apps = process.argv.slice(2);
-if (!apps.length) apps.push('internal');
+...
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const requiredAppFiles = ['index.html', 'manifest.webmanifest', 'sw.js', 'src/app.js', 'src/styles.css', 'icons/icon-192.svg', 'icons/icon-512.svg'];
 const failures = [];
@@ -32,14 +32,15 @@ for (const app of apps) {
   if (!html.includes('manifest.webmanifest')) failures.push(`${app} is missing manifest link`);
   if (!manifest.includes('standalone')) failures.push(`${app} manifest is not installable`);
   if (!serviceWorker.includes('install') || !serviceWorker.includes('fetch') || !serviceWorker.includes('sync') || !serviceWorker.includes('push')) failures.push(`${app} service worker is incomplete`);
-  if (!styles.includes(':root') || styles.includes('bootstrap') || styles.includes('tailwind')) failures.push(`${app} CSS violates local enterprise styling rules`);
+  if (!styles.includes(':root') || styles.includes('border-radius:4') || styles.includes('bootstrap') || styles.includes('tailwind')) failures.push(`${app} CSS violates local enterprise styling rules`);
 }
 
 if (internalRoles.length < 17) failures.push('Internal role catalogue is incomplete');
+if (externalRoles.length < 6) failures.push('External role catalogue is incomplete');
 if (securityControls.length < 30) failures.push('Security control catalogue is incomplete');
 
 if (failures.length) {
   console.error(failures.join('\n'));
   process.exit(1);
 }
-console.log(`Validated ${apps.join(' and ')} PWA structure against ${databaseModules.length} SQL modules, ${internalRoles.length} internal roles, and ${securityControls.length} security controls.`);
+console.log(`Validated ${apps.join(' and ')} PWA structure against ${databaseModules.length} SQL modules, ${internalRoles.length} internal roles, ${externalRoles.length} external roles, and ${securityControls.length} security controls.`);
