@@ -14,14 +14,20 @@ for (const module of databaseModules) {
 }
 
 for (const app of apps) {
+  const indexPath = join(root, 'apps', app, 'index.html');
+  const manifestPath = join(root, 'apps', app, 'manifest.webmanifest');
+  const swPath = join(root, 'apps', app, 'sw.js');
+  const stylesPath = join(root, 'apps', app, 'src/styles.css');
+
   for (const file of requiredAppFiles) {
     const target = join(root, 'apps', app, file);
     if (!existsSync(target)) failures.push(`Missing ${app} PWA file ${file}`);
   }
-  const html = readFileSync(join(root, 'apps', app, 'index.html'), 'utf8');
-  const manifest = readFileSync(join(root, 'apps', app, 'manifest.webmanifest'), 'utf8');
-  const serviceWorker = readFileSync(join(root, 'apps', app, 'sw.js'), 'utf8');
-  const styles = readFileSync(join(root, 'apps', app, 'src/styles.css'), 'utf8');
+  if (![indexPath, manifestPath, swPath, stylesPath].every(existsSync)) continue;
+  const html = readFileSync(indexPath, 'utf8');
+  const manifest = readFileSync(manifestPath, 'utf8');
+  const serviceWorker = readFileSync(swPath, 'utf8');
+  const styles = readFileSync(stylesPath, 'utf8');
   if (!html.includes('Content-Security-Policy')) failures.push(`${app} is missing CSP metadata`);
   if (!html.includes('manifest.webmanifest')) failures.push(`${app} is missing manifest link`);
   if (!manifest.includes('standalone')) failures.push(`${app} manifest is not installable`);
