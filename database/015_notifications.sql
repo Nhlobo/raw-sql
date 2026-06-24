@@ -760,3 +760,330 @@ CREATE TABLE notifications.audit_trail
 
 COMMENT ON TABLE notifications.audit_trail
 IS 'Notification audit trail';
+
+-- =============================================================================
+-- NOTIFICATION ANALYTICS
+-- =============================================================================
+
+CREATE TABLE notifications.notification_analytics
+(
+    notification_analytics_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    reporting_date DATE NOT NULL,
+
+    total_notifications INTEGER DEFAULT 0,
+
+    emails_sent INTEGER DEFAULT 0,
+
+    sms_sent INTEGER DEFAULT 0,
+
+    whatsapp_sent INTEGER DEFAULT 0,
+
+    push_sent INTEGER DEFAULT 0,
+
+    in_app_sent INTEGER DEFAULT 0,
+
+    successful_deliveries INTEGER DEFAULT 0,
+
+    failed_deliveries INTEGER DEFAULT 0,
+
+    opened_notifications INTEGER DEFAULT 0,
+
+    clicked_notifications INTEGER DEFAULT 0,
+
+    average_delivery_seconds NUMERIC(10,2),
+
+    average_open_seconds NUMERIC(10,2),
+
+    updated_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE notifications.notification_analytics
+IS 'Daily notification analytics';
+
+CREATE INDEX idx_notification_analytics_date
+ON notifications.notification_analytics(reporting_date);
+
+-- =============================================================================
+-- CHANNEL PERFORMANCE
+-- =============================================================================
+
+CREATE TABLE notifications.channel_performance
+(
+    channel_performance_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    notification_channel notifications.notification_channel,
+
+    reporting_period DATE,
+
+    total_sent INTEGER DEFAULT 0,
+
+    delivered INTEGER DEFAULT 0,
+
+    failed INTEGER DEFAULT 0,
+
+    bounced INTEGER DEFAULT 0,
+
+    delivery_rate NUMERIC(8,2),
+
+    average_delivery_time NUMERIC(10,2),
+
+    updated_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE notifications.channel_performance
+IS 'Performance by notification channel';
+
+-- =============================================================================
+-- FAILED DELIVERY QUEUE
+-- =============================================================================
+
+CREATE TABLE notifications.failed_deliveries
+(
+    failed_delivery_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    notification_queue_id UUID
+        REFERENCES notifications.notification_queue(notification_queue_id)
+        ON DELETE CASCADE,
+
+    notification_channel notifications.notification_channel,
+
+    recipient VARCHAR(255),
+
+    failure_reason TEXT,
+
+    provider_response TEXT,
+
+    retry_allowed BOOLEAN DEFAULT TRUE,
+
+    resolved BOOLEAN DEFAULT FALSE,
+
+    resolved_at TIMESTAMPTZ,
+
+    created_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE notifications.failed_deliveries
+IS 'Failed notification deliveries';
+
+CREATE INDEX idx_failed_delivery_resolved
+ON notifications.failed_deliveries(resolved);
+
+-- =============================================================================
+-- LIVE PROCESSING QUEUE
+-- =============================================================================
+
+CREATE TABLE notifications.processing_queue
+(
+    processing_queue_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    notification_queue_id UUID
+        REFERENCES notifications.notification_queue(notification_queue_id)
+        ON DELETE CASCADE,
+
+    worker_name VARCHAR(120),
+
+    processing_started TIMESTAMPTZ,
+
+    processing_completed TIMESTAMPTZ,
+
+    processing_duration_ms INTEGER,
+
+    processing_status notifications.queue_status,
+
+    error_message TEXT
+);
+
+COMMENT ON TABLE notifications.processing_queue
+IS 'Live processing queue monitor';
+
+-- =============================================================================
+-- WEBHOOK ENDPOINTS
+-- =============================================================================
+
+CREATE TABLE notifications.webhook_endpoints
+(
+    webhook_endpoint_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    endpoint_name VARCHAR(255),
+
+    endpoint_url TEXT,
+
+    authentication_method VARCHAR(120),
+
+    secret_key TEXT,
+
+    active BOOLEAN DEFAULT TRUE,
+
+    timeout_seconds INTEGER DEFAULT 30,
+
+    retry_attempts INTEGER DEFAULT 3,
+
+    created_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE notifications.webhook_endpoints
+IS 'Registered webhook endpoints';
+
+-- =============================================================================
+-- WEBHOOK DELIVERIES
+-- =============================================================================
+
+CREATE TABLE notifications.webhook_deliveries
+(
+    webhook_delivery_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    webhook_endpoint_id UUID
+        REFERENCES notifications.webhook_endpoints(webhook_endpoint_id),
+
+    notification_event_id UUID
+        REFERENCES notifications.events(notification_event_id),
+
+    payload JSONB,
+
+    response_status INTEGER,
+
+    response_body TEXT,
+
+    delivered BOOLEAN DEFAULT FALSE,
+
+    delivered_at TIMESTAMPTZ,
+
+    retry_count INTEGER DEFAULT 0
+);
+
+COMMENT ON TABLE notifications.webhook_deliveries
+IS 'Webhook delivery history';
+
+-- =============================================================================
+-- EXECUTIVE DASHBOARD SUMMARY
+-- =============================================================================
+
+CREATE TABLE notifications.dashboard_summary
+(
+    dashboard_summary_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    total_notifications INTEGER DEFAULT 0,
+
+    queued_notifications INTEGER DEFAULT 0,
+
+    processing_notifications INTEGER DEFAULT 0,
+
+    completed_notifications INTEGER DEFAULT 0,
+
+    failed_notifications INTEGER DEFAULT 0,
+
+    email_success_rate NUMERIC(8,2),
+
+    sms_success_rate NUMERIC(8,2),
+
+    whatsapp_success_rate NUMERIC(8,2),
+
+    push_success_rate NUMERIC(8,2),
+
+    updated_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE notifications.dashboard_summary
+IS 'Executive notification dashboard';
+
+-- =============================================================================
+-- ENTERPRISE DIRECTORY VIEW
+-- =============================================================================
+
+CREATE VIEW notifications.v_notification_directory
+AS
+SELECT
+
+q.notification_queue_id,
+q.notification_channel,
+q.recipient_name,
+q.recipient_email,
+q.recipient_mobile,
+q.subject,
+q.priority,
+q.queue_status,
+q.scheduled_for,
+q.queued_at,
+
+e.event_name,
+
+t.template_name
+
+FROM notifications.notification_queue q
+
+LEFT JOIN notifications.events e
+ON e.notification_event_id=q.notification_event_id
+
+LEFT JOIN notifications.templates t
+ON t.notification_template_id=q.notification_template_id;
+
+COMMENT ON VIEW notifications.v_notification_directory
+IS 'Enterprise notification directory';
+
+-- =============================================================================
+-- EXECUTIVE DASHBOARD VIEW
+-- =============================================================================
+
+CREATE VIEW notifications.v_dashboard
+AS
+SELECT
+
+COUNT(*) AS total_notifications,
+
+COUNT(*) FILTER
+(
+WHERE queue_status='queued'
+) AS queued,
+
+COUNT(*) FILTER
+(
+WHERE queue_status='processing'
+) AS processing,
+
+COUNT(*) FILTER
+(
+WHERE queue_status='completed'
+) AS completed,
+
+COUNT(*) FILTER
+(
+WHERE queue_status='failed'
+) AS failed
+
+FROM notifications.notification_queue;
+
+COMMENT ON VIEW notifications.v_dashboard
+IS 'Executive notification dashboard';
+
+-- =============================================================================
+-- DEPLOYMENT VERIFICATION
+-- =============================================================================
+
+DO
+$$
+BEGIN
+
+    RAISE NOTICE '';
+    RAISE NOTICE '===========================================================';
+    RAISE NOTICE 'Enterprise Notification & Communication Engine Installed';
+    RAISE NOTICE '015_notifications.sql COMPLETED';
+    RAISE NOTICE '===========================================================';
+    RAISE NOTICE '';
+
+END;
+$$;
+
+COMMIT;
