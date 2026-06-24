@@ -1,0 +1,3 @@
+import { z } from 'zod';
+const Env = z.object({NODE_ENV:z.string().default('development'),API_PORT:z.coerce.number().default(4000),DATABASE_URL:z.string().url(),JWT_ACCESS_SECRET:z.string().min(32),JWT_REFRESH_SECRET:z.string().min(32),COOKIE_SECRET:z.string().min(32),CORS_INTERNAL_ORIGIN:z.string().url(),CORS_EXTERNAL_ORIGIN:z.string().url(),R2_ACCOUNT_ID:z.string().optional(),R2_ACCESS_KEY_ID:z.string().optional(),R2_SECRET_ACCESS_KEY:z.string().optional(),R2_BUCKET:z.string().optional(),RESEND_API_KEY:z.string().optional(),EMAIL_FROM:z.string().email().optional()});
+export const env = Env.parse(process.env);
