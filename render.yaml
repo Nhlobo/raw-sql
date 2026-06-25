@@ -13,14 +13,35 @@ services:
           property: connectionString
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: CSRF_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://kutlwano-web.onrender.com
+      - key: EMAIL_FROM
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+
   - type: static
     name: kutlwano-web
     buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter @kutlwano/web build
     staticPublishPath: apps/web/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://kutlwano-api.onrender.com
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
+
 databases:
   - name: kutlwano-postgres
     plan: starter
