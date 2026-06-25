@@ -8,7 +8,7 @@ FILE:
 002_enums.sql
 
 VERSION:
-1.1 FIXED
+1.2 FIXED
 
 DESCRIPTION
 
@@ -587,6 +587,30 @@ SELECT pg_temp.create_enum_if_not_exists(
 );
 
 COMMENT ON TYPE expert.medical_specialty IS 'Registered medical expert specialties';
+
+-- =============================================================================
+-- EXPERT STATUS
+-- =============================================================================
+
+SELECT pg_temp.create_enum_if_not_exists(
+    'expert',
+    'expert_status',
+    ARRAY['active','inactive','suspended','retired','archived']
+);
+
+COMMENT ON TYPE expert.expert_status IS 'Medical expert lifecycle status';
+
+-- =============================================================================
+-- REGISTRATION STATUS
+-- =============================================================================
+
+SELECT pg_temp.create_enum_if_not_exists(
+    'expert',
+    'registration_status',
+    ARRAY['pending','active','expired','suspended','cancelled']
+);
+
+COMMENT ON TYPE expert.registration_status IS 'Professional registration status';
 
 -- =============================================================================
 -- ASSESSMENT STATUS
