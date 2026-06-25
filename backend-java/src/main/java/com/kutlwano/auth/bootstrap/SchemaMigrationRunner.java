@@ -59,7 +59,6 @@ public class SchemaMigrationRunner implements CommandLineRunner {
         }
 
         populator.execute(dataSource);
-
         System.out.println("SchemaMigrationRunner completed successfully.");
     }
 }
