@@ -10,19 +10,33 @@ export async function login(payload: {
   devicePlatform: string;
   browser: string;
 }): Promise<LoginResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
-  const data = await response.json();
+    const text = await response.text();
+    let data: any = {};
 
-  if (!response.ok) {
-    throw new Error(data?.message || 'Login failed');
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { message: text || 'Unexpected server response' };
+    }
+
+    if (!response.ok) {
+      throw new Error(data?.message || `Login failed (${response.status})`);
+    }
+
+    return data;
+  } catch (error: any) {
+    if (error?.message === 'Failed to fetch') {
+      throw new Error('Cannot reach backend. Check API URL and backend CORS settings.');
+    }
+    throw error;
   }
-
-  return data;
 }
