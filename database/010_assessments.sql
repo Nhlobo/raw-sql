@@ -8,16 +8,13 @@ FILE
 010_assessments.sql
 
 VERSION
-1.0 FINAL
+1.1 FIXED
 
 DESCRIPTION
 
 Enterprise Medical Assessment Engine
 
-This module manages every medico-legal assessment from
-booking through examination, impairment calculation,
-quality assurance, report generation and sign-off.
-
+This version is idempotent and safe to rerun.
 ===============================================================================
 */
 
@@ -27,7 +24,7 @@ BEGIN;
 -- ASSESSMENT REGISTER
 -- =============================================================================
 
-CREATE TABLE assessment.assessments
+CREATE TABLE IF NOT EXISTS assessment.assessments
 (
     assessment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -94,23 +91,23 @@ CREATE TABLE assessment.assessments
 COMMENT ON TABLE assessment.assessments
 IS 'Enterprise assessment register';
 
-CREATE INDEX idx_assessment_master
+CREATE INDEX IF NOT EXISTS idx_assessment_master
 ON assessment.assessments(master_file_id);
 
-CREATE INDEX idx_assessment_claimant
+CREATE INDEX IF NOT EXISTS idx_assessment_claimant
 ON assessment.assessments(claimant_id);
 
-CREATE INDEX idx_assessment_expert
+CREATE INDEX IF NOT EXISTS idx_assessment_expert
 ON assessment.assessments(medical_expert_id);
 
-CREATE INDEX idx_assessment_status
+CREATE INDEX IF NOT EXISTS idx_assessment_status
 ON assessment.assessments(assessment_status);
 
 -- =============================================================================
 -- ASSESSMENT SESSIONS
 -- =============================================================================
 
-CREATE TABLE assessment.sessions
+CREATE TABLE IF NOT EXISTS assessment.sessions
 (
     assessment_session_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -138,11 +135,7 @@ CREATE TABLE assessment.sessions
     created_at TIMESTAMPTZ
         DEFAULT core.utc_now(),
 
-    UNIQUE
-    (
-        assessment_id,
-        session_number
-    )
+    UNIQUE (assessment_id, session_number)
 );
 
 COMMENT ON TABLE assessment.sessions
@@ -152,7 +145,7 @@ IS 'Assessment sessions';
 -- VITAL SIGNS
 -- =============================================================================
 
-CREATE TABLE assessment.vital_signs
+CREATE TABLE IF NOT EXISTS assessment.vital_signs
 (
     vital_sign_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -194,7 +187,7 @@ IS 'Vital signs recorded during assessment';
 -- PHYSICAL EXAMINATION
 -- =============================================================================
 
-CREATE TABLE assessment.physical_examinations
+CREATE TABLE IF NOT EXISTS assessment.physical_examinations
 (
     physical_examination_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -240,7 +233,7 @@ IS 'Physical examination findings';
 -- BODY REGIONS
 -- =============================================================================
 
-CREATE TABLE assessment.body_regions
+CREATE TABLE IF NOT EXISTS assessment.body_regions
 (
     body_region_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -269,7 +262,7 @@ IS 'Body region examination';
 -- DIAGNOSES
 -- =============================================================================
 
-CREATE TABLE assessment.diagnoses
+CREATE TABLE IF NOT EXISTS assessment.diagnoses
 (
     diagnosis_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -300,7 +293,7 @@ IS 'Medical diagnoses';
 -- CLINICAL FINDINGS
 -- =============================================================================
 
-CREATE TABLE assessment.clinical_findings
+CREATE TABLE IF NOT EXISTS assessment.clinical_findings
 (
     clinical_finding_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -332,7 +325,7 @@ IS 'Clinical findings';
 -- INVESTIGATIONS
 -- =============================================================================
 
-CREATE TABLE assessment.investigations
+CREATE TABLE IF NOT EXISTS assessment.investigations
 (
     investigation_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -365,7 +358,7 @@ IS 'Investigations and diagnostic tests';
 -- ORTHOPAEDIC ASSESSMENT
 -- =============================================================================
 
-CREATE TABLE assessment.orthopaedic_assessments
+CREATE TABLE IF NOT EXISTS assessment.orthopaedic_assessments
 (
     orthopaedic_assessment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -415,7 +408,7 @@ IS 'Orthopaedic examination';
 -- NEUROSURGERY ASSESSMENT
 -- =============================================================================
 
-CREATE TABLE assessment.neurosurgery_assessments
+CREATE TABLE IF NOT EXISTS assessment.neurosurgery_assessments
 (
     neurosurgery_assessment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -461,7 +454,7 @@ IS 'Neurosurgical assessment';
 -- OCCUPATIONAL THERAPY ASSESSMENT
 -- =============================================================================
 
-CREATE TABLE assessment.occupational_therapy_assessments
+CREATE TABLE IF NOT EXISTS assessment.occupational_therapy_assessments
 (
     occupational_therapy_assessment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -505,7 +498,7 @@ IS 'Occupational therapy assessment';
 -- PLASTIC SURGERY ASSESSMENT
 -- =============================================================================
 
-CREATE TABLE assessment.plastic_surgery_assessments
+CREATE TABLE IF NOT EXISTS assessment.plastic_surgery_assessments
 (
     plastic_surgery_assessment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -540,7 +533,7 @@ IS 'Plastic surgery assessment';
 -- GENERAL SURGERY ASSESSMENT
 -- =============================================================================
 
-CREATE TABLE assessment.general_surgery_assessments
+CREATE TABLE IF NOT EXISTS assessment.general_surgery_assessments
 (
     general_surgery_assessment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -572,7 +565,7 @@ IS 'General surgery assessment';
 -- PSYCHOLOGY ASSESSMENT
 -- =============================================================================
 
-CREATE TABLE assessment.psychology_assessments
+CREATE TABLE IF NOT EXISTS assessment.psychology_assessments
 (
     psychology_assessment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -612,7 +605,7 @@ IS 'Psychology assessment';
 -- PSYCHIATRY ASSESSMENT
 -- =============================================================================
 
-CREATE TABLE assessment.psychiatry_assessments
+CREATE TABLE IF NOT EXISTS assessment.psychiatry_assessments
 (
     psychiatry_assessment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -648,7 +641,7 @@ IS 'Psychiatric assessment';
 -- NEUROLOGY ASSESSMENT
 -- =============================================================================
 
-CREATE TABLE assessment.neurology_assessments
+CREATE TABLE IF NOT EXISTS assessment.neurology_assessments
 (
     neurology_assessment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -686,7 +679,7 @@ IS 'Neurology assessment';
 -- RADIOLOGY REVIEW
 -- =============================================================================
 
-CREATE TABLE assessment.radiology_reviews
+CREATE TABLE IF NOT EXISTS assessment.radiology_reviews
 (
     radiology_review_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -718,7 +711,7 @@ IS 'Radiology review';
 -- NURSING ASSESSMENT
 -- =============================================================================
 
-CREATE TABLE assessment.nursing_assessments
+CREATE TABLE IF NOT EXISTS assessment.nursing_assessments
 (
     nursing_assessment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -752,7 +745,7 @@ IS 'Nursing assessment';
 -- FUNCTIONAL CAPACITY EVALUATION
 -- =============================================================================
 
-CREATE TABLE assessment.functional_capacity_evaluations
+CREATE TABLE IF NOT EXISTS assessment.functional_capacity_evaluations
 (
     functional_capacity_evaluation_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -794,7 +787,7 @@ IS 'Functional Capacity Evaluation';
 -- PAIN ASSESSMENT
 -- =============================================================================
 
-CREATE TABLE assessment.pain_assessments
+CREATE TABLE IF NOT EXISTS assessment.pain_assessments
 (
     pain_assessment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -829,7 +822,7 @@ IS 'Pain assessment';
 -- WHOLE PERSON IMPAIRMENT (WPI)
 -- =============================================================================
 
-CREATE TABLE assessment.whole_person_impairment
+CREATE TABLE IF NOT EXISTS assessment.whole_person_impairment
 (
     whole_person_impairment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -899,14 +892,14 @@ CREATE TABLE assessment.whole_person_impairment
 COMMENT ON TABLE assessment.whole_person_impairment
 IS 'Whole Person Impairment calculations';
 
-CREATE INDEX idx_wpi_assessment
+CREATE INDEX IF NOT EXISTS idx_wpi_assessment
 ON assessment.whole_person_impairment(assessment_id);
 
 -- =============================================================================
 -- AMA GUIDES CALCULATIONS
 -- =============================================================================
 
-CREATE TABLE assessment.ama_guides_calculations
+CREATE TABLE IF NOT EXISTS assessment.ama_guides_calculations
 (
     ama_guides_calculation_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -946,7 +939,7 @@ IS 'AMA Guides calculations';
 -- NARRATIVE TEST
 -- =============================================================================
 
-CREATE TABLE assessment.narrative_reports
+CREATE TABLE IF NOT EXISTS assessment.narrative_reports
 (
     narrative_report_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -986,7 +979,7 @@ IS 'Narrative medico-legal report';
 -- FUTURE MEDICAL EXPENSES
 -- =============================================================================
 
-CREATE TABLE assessment.future_medical_expenses
+CREATE TABLE IF NOT EXISTS assessment.future_medical_expenses
 (
     future_medical_expense_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1017,7 +1010,7 @@ IS 'Future medical expenses';
 -- REPORT GENERATION
 -- =============================================================================
 
-CREATE TABLE assessment.generated_reports
+CREATE TABLE IF NOT EXISTS assessment.generated_reports
 (
     generated_report_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1049,7 +1042,7 @@ IS 'Generated assessment reports';
 -- DIGITAL SIGNATURES
 -- =============================================================================
 
-CREATE TABLE assessment.digital_signatures
+CREATE TABLE IF NOT EXISTS assessment.digital_signatures
 (
     digital_signature_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1080,7 +1073,7 @@ IS 'Digital signatures';
 -- QUALITY ASSURANCE
 -- =============================================================================
 
-CREATE TABLE assessment.quality_reviews
+CREATE TABLE IF NOT EXISTS assessment.quality_reviews
 (
     quality_review_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1109,7 +1102,7 @@ IS 'Quality assurance reviews';
 -- PEER REVIEW
 -- =============================================================================
 
-CREATE TABLE assessment.peer_reviews
+CREATE TABLE IF NOT EXISTS assessment.peer_reviews
 (
     peer_review_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1139,7 +1132,7 @@ IS 'Peer review';
 -- ASSESSMENT DOCUMENTS
 -- =============================================================================
 
-CREATE TABLE assessment.documents
+CREATE TABLE IF NOT EXISTS assessment.documents
 (
     assessment_document_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1173,7 +1166,7 @@ IS 'Assessment documents';
 -- ASSESSMENT TIMELINE
 -- =============================================================================
 
-CREATE TABLE assessment.timeline
+CREATE TABLE IF NOT EXISTS assessment.timeline
 (
     timeline_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1201,7 +1194,7 @@ IS 'Assessment activity timeline';
 -- DASHBOARD SUMMARY
 -- =============================================================================
 
-CREATE TABLE assessment.dashboard_summary
+CREATE TABLE IF NOT EXISTS assessment.dashboard_summary
 (
     dashboard_summary_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1233,46 +1226,34 @@ IS 'Assessment dashboard summary';
 -- ENTERPRISE ASSESSMENT VIEW
 -- =============================================================================
 
-CREATE VIEW assessment.v_assessment_overview
+CREATE OR REPLACE VIEW assessment.v_assessment_overview
 AS
 SELECT
-
-a.assessment_id,
-a.assessment_number,
-a.assessment_type,
-a.assessment_status,
-a.report_due_date,
-
-mf.master_file_number,
-
-c.claimant_number,
-c.first_name,
-c.last_name,
-
-e.expert_number,
-e.first_name AS expert_first_name,
-e.last_name AS expert_last_name,
-
-w.final_whole_person_impairment,
-
-d.report_signed
-
+    a.assessment_id,
+    a.assessment_number,
+    a.assessment_type,
+    a.assessment_status,
+    a.report_due_date,
+    mf.master_file_number,
+    c.claimant_number,
+    c.first_name,
+    c.last_name,
+    e.expert_number,
+    e.first_name AS expert_first_name,
+    e.last_name AS expert_last_name,
+    w.final_whole_person_impairment,
+    d.report_signed
 FROM assessment.assessments a
-
 LEFT JOIN master.master_files mf
-ON mf.master_file_id = a.master_file_id
-
+    ON mf.master_file_id = a.master_file_id
 LEFT JOIN claimant.claimants c
-ON c.claimant_id = a.claimant_id
-
+    ON c.claimant_id = a.claimant_id
 LEFT JOIN expert.medical_experts e
-ON e.medical_expert_id = a.medical_expert_id
-
+    ON e.medical_expert_id = a.medical_expert_id
 LEFT JOIN assessment.whole_person_impairment w
-ON w.assessment_id = a.assessment_id
-
+    ON w.assessment_id = a.assessment_id
 LEFT JOIN assessment.dashboard_summary d
-ON d.assessment_id = a.assessment_id;
+    ON d.assessment_id = a.assessment_id;
 
 COMMENT ON VIEW assessment.v_assessment_overview
 IS 'Enterprise assessment directory';
@@ -1284,14 +1265,12 @@ IS 'Enterprise assessment directory';
 DO
 $$
 BEGIN
-
     RAISE NOTICE '';
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Medical Assessment Engine Installed Successfully';
     RAISE NOTICE '010_assessments.sql Completed';
     RAISE NOTICE '=======================================================';
     RAISE NOTICE '';
-
 END;
 $$;
 
