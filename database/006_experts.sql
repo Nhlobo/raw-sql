@@ -8,7 +8,7 @@ FILE
 006_experts.sql
 
 VERSION
-1.1 FIXED
+1.2 FIXED
 
 DESCRIPTION
 
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS expert.medical_experts
     assessment_type assessment.assessment_type
         NOT NULL,
 
-    expert_status expert.expert_status
+    expert_status VARCHAR(50)
         NOT NULL DEFAULT 'active',
 
     years_of_experience INTEGER
@@ -124,7 +124,7 @@ CREATE TABLE IF NOT EXISTS expert.hpcsa_registrations
 
     registration_category VARCHAR(150),
 
-    registration_status expert.registration_status
+    registration_status VARCHAR(50)
         NOT NULL,
 
     issue_date DATE,
