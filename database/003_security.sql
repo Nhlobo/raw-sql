@@ -8,28 +8,13 @@ FILE
 003_security.sql
 
 VERSION
-1.0 FINAL
+1.1 FIXED
 
 DESCRIPTION
 
 Enterprise Security Infrastructure
 
-This migration creates the complete authentication and authorization
-foundation for the Kutlwano Enterprise Platform.
-
-This includes:
-
-• Enterprise permissions
-• Role hierarchy
-• Authentication configuration
-• Password policies
-• MFA infrastructure
-• Device trust
-• Session security
-• Account lockout
-• Security policies
-• Audit integration
-
+This version is idempotent and safe to rerun.
 ===============================================================================
 */
 
@@ -39,7 +24,7 @@ BEGIN;
 -- ENTERPRISE PERMISSIONS
 -- =============================================================================
 
-CREATE TABLE security.permissions
+CREATE TABLE IF NOT EXISTS security.permissions
 (
     permission_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -68,17 +53,17 @@ CREATE TABLE security.permissions
 COMMENT ON TABLE security.permissions
 IS 'Enterprise permission catalogue';
 
-CREATE INDEX idx_permissions_code
+CREATE INDEX IF NOT EXISTS idx_permissions_code
 ON security.permissions(permission_code);
 
-CREATE INDEX idx_permissions_module
+CREATE INDEX IF NOT EXISTS idx_permissions_module
 ON security.permissions(module_name);
 
 -- =============================================================================
 -- SECURITY ROLES
 -- =============================================================================
 
-CREATE TABLE security.roles
+CREATE TABLE IF NOT EXISTS security.roles
 (
     role_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -110,14 +95,14 @@ CREATE TABLE security.roles
 COMMENT ON TABLE security.roles
 IS 'Enterprise security roles';
 
-CREATE INDEX idx_roles_level
+CREATE INDEX IF NOT EXISTS idx_roles_level
 ON security.roles(hierarchy_level);
 
 -- =============================================================================
 -- ROLE PERMISSIONS
 -- =============================================================================
 
-CREATE TABLE security.role_permissions
+CREATE TABLE IF NOT EXISTS security.role_permissions
 (
     role_permission_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -159,7 +144,7 @@ IS 'Permission matrix';
 -- PASSWORD POLICY
 -- =============================================================================
 
-CREATE TABLE security.password_policy
+CREATE TABLE IF NOT EXISTS security.password_policy
 (
     policy_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -208,7 +193,7 @@ IS 'Enterprise password rules';
 -- AUTHENTICATION CONFIGURATION
 -- =============================================================================
 
-CREATE TABLE security.authentication_configuration
+CREATE TABLE IF NOT EXISTS security.authentication_configuration
 (
     configuration_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -251,7 +236,7 @@ IS 'Authentication global configuration';
 -- ACCOUNT LOCKOUT POLICY
 -- =============================================================================
 
-CREATE TABLE security.account_lockout_policy
+CREATE TABLE IF NOT EXISTS security.account_lockout_policy
 (
     lockout_policy_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -279,7 +264,7 @@ IS 'Enterprise account lockout policy';
 -- SECURITY SETTINGS
 -- =============================================================================
 
-CREATE TABLE security.security_settings
+CREATE TABLE IF NOT EXISTS security.security_settings
 (
     settings_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -325,7 +310,7 @@ IS 'Enterprise security configuration';
 -- ACTIVE SESSIONS
 -- =============================================================================
 
-CREATE TABLE security.active_sessions
+CREATE TABLE IF NOT EXISTS security.active_sessions
 (
     session_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -369,23 +354,23 @@ CREATE TABLE security.active_sessions
 COMMENT ON TABLE security.active_sessions
 IS 'Authenticated user sessions';
 
-CREATE INDEX idx_active_sessions_user
+CREATE INDEX IF NOT EXISTS idx_active_sessions_user
 ON security.active_sessions(user_id);
 
-CREATE INDEX idx_active_sessions_status
+CREATE INDEX IF NOT EXISTS idx_active_sessions_status
 ON security.active_sessions(session_status);
 
-CREATE INDEX idx_active_sessions_expires
+CREATE INDEX IF NOT EXISTS idx_active_sessions_expires
 ON security.active_sessions(expires_at);
 
-CREATE INDEX idx_active_sessions_token
+CREATE INDEX IF NOT EXISTS idx_active_sessions_token
 ON security.active_sessions(session_token);
 
 -- =============================================================================
 -- TRUSTED DEVICES
 -- =============================================================================
 
-CREATE TABLE security.trusted_devices
+CREATE TABLE IF NOT EXISTS security.trusted_devices
 (
     trusted_device_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -417,17 +402,17 @@ CREATE TABLE security.trusted_devices
 COMMENT ON TABLE security.trusted_devices
 IS 'Trusted registered devices';
 
-CREATE INDEX idx_trusted_devices_user
+CREATE INDEX IF NOT EXISTS idx_trusted_devices_user
 ON security.trusted_devices(user_id);
 
-CREATE INDEX idx_trusted_devices_hash
+CREATE INDEX IF NOT EXISTS idx_trusted_devices_hash
 ON security.trusted_devices(fingerprint_hash);
 
 -- =============================================================================
 -- LOGIN HISTORY
 -- =============================================================================
 
-CREATE TABLE security.login_history
+CREATE TABLE IF NOT EXISTS security.login_history
 (
     login_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -458,20 +443,20 @@ CREATE TABLE security.login_history
 COMMENT ON TABLE security.login_history
 IS 'Historical authentication attempts';
 
-CREATE INDEX idx_login_history_user
+CREATE INDEX IF NOT EXISTS idx_login_history_user
 ON security.login_history(user_id);
 
-CREATE INDEX idx_login_history_time
+CREATE INDEX IF NOT EXISTS idx_login_history_time
 ON security.login_history(login_time DESC);
 
-CREATE INDEX idx_login_history_result
+CREATE INDEX IF NOT EXISTS idx_login_history_result
 ON security.login_history(login_result);
 
 -- =============================================================================
 -- FAILED LOGIN TRACKER
 -- =============================================================================
 
-CREATE TABLE security.failed_login_tracker
+CREATE TABLE IF NOT EXISTS security.failed_login_tracker
 (
     tracker_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -495,17 +480,17 @@ CREATE TABLE security.failed_login_tracker
 COMMENT ON TABLE security.failed_login_tracker
 IS 'Temporary failed login tracking';
 
-CREATE INDEX idx_failed_login_username
+CREATE INDEX IF NOT EXISTS idx_failed_login_username
 ON security.failed_login_tracker(username);
 
-CREATE INDEX idx_failed_login_ip
+CREATE INDEX IF NOT EXISTS idx_failed_login_ip
 ON security.failed_login_tracker(ip_address);
 
 -- =============================================================================
 -- PASSWORD HISTORY
 -- =============================================================================
 
-CREATE TABLE security.password_history
+CREATE TABLE IF NOT EXISTS security.password_history
 (
     password_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -523,14 +508,14 @@ CREATE TABLE security.password_history
 COMMENT ON TABLE security.password_history
 IS 'Historical password archive';
 
-CREATE INDEX idx_password_history_user
+CREATE INDEX IF NOT EXISTS idx_password_history_user
 ON security.password_history(user_id);
 
 -- =============================================================================
 -- PASSWORD RESET TOKENS
 -- =============================================================================
 
-CREATE TABLE security.password_reset_tokens
+CREATE TABLE IF NOT EXISTS security.password_reset_tokens
 (
     token_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -552,17 +537,17 @@ CREATE TABLE security.password_reset_tokens
 COMMENT ON TABLE security.password_reset_tokens
 IS 'Password reset workflow';
 
-CREATE INDEX idx_password_reset_token
+CREATE INDEX IF NOT EXISTS idx_password_reset_token
 ON security.password_reset_tokens(token);
 
-CREATE INDEX idx_password_reset_user
+CREATE INDEX IF NOT EXISTS idx_password_reset_user
 ON security.password_reset_tokens(user_id);
 
 -- =============================================================================
 -- EMAIL VERIFICATION TOKENS
 -- =============================================================================
 
-CREATE TABLE security.email_verification_tokens
+CREATE TABLE IF NOT EXISTS security.email_verification_tokens
 (
     verification_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -582,14 +567,14 @@ CREATE TABLE security.email_verification_tokens
 COMMENT ON TABLE security.email_verification_tokens
 IS 'Email verification records';
 
-CREATE INDEX idx_email_verification_token
+CREATE INDEX IF NOT EXISTS idx_email_verification_token
 ON security.email_verification_tokens(verification_token);
 
 -- =============================================================================
 -- SECURITY EVENTS
 -- =============================================================================
 
-CREATE TABLE security.security_events
+CREATE TABLE IF NOT EXISTS security.security_events
 (
     security_event_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -622,20 +607,20 @@ CREATE TABLE security.security_events
 COMMENT ON TABLE security.security_events
 IS 'Enterprise security incidents';
 
-CREATE INDEX idx_security_events_user
+CREATE INDEX IF NOT EXISTS idx_security_events_user
 ON security.security_events(user_id);
 
-CREATE INDEX idx_security_events_time
+CREATE INDEX IF NOT EXISTS idx_security_events_time
 ON security.security_events(event_timestamp DESC);
 
-CREATE INDEX idx_security_events_severity
+CREATE INDEX IF NOT EXISTS idx_security_events_severity
 ON security.security_events(severity);
 
 -- =============================================================================
 -- MULTI-FACTOR AUTHENTICATION
 -- =============================================================================
 
-CREATE TABLE security.mfa_devices
+CREATE TABLE IF NOT EXISTS security.mfa_devices
 (
     mfa_device_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -660,17 +645,17 @@ CREATE TABLE security.mfa_devices
 COMMENT ON TABLE security.mfa_devices
 IS 'Registered MFA authenticators';
 
-CREATE INDEX idx_mfa_devices_user
+CREATE INDEX IF NOT EXISTS idx_mfa_devices_user
 ON security.mfa_devices(user_id);
 
-CREATE INDEX idx_mfa_devices_status
+CREATE INDEX IF NOT EXISTS idx_mfa_devices_status
 ON security.mfa_devices(status);
 
 -- =============================================================================
 -- API CLIENTS
 -- =============================================================================
 
-CREATE TABLE security.api_clients
+CREATE TABLE IF NOT EXISTS security.api_clients
 (
     api_client_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -710,17 +695,17 @@ CREATE TABLE security.api_clients
 COMMENT ON TABLE security.api_clients
 IS 'Registered enterprise API clients';
 
-CREATE INDEX idx_api_clients_identifier
+CREATE INDEX IF NOT EXISTS idx_api_clients_identifier
 ON security.api_clients(client_identifier);
 
-CREATE INDEX idx_api_clients_status
+CREATE INDEX IF NOT EXISTS idx_api_clients_status
 ON security.api_clients(api_status);
 
 -- =============================================================================
 -- API KEYS
 -- =============================================================================
 
-CREATE TABLE security.api_keys
+CREATE TABLE IF NOT EXISTS security.api_keys
 (
     api_key_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -753,17 +738,17 @@ CREATE TABLE security.api_keys
 COMMENT ON TABLE security.api_keys
 IS 'Enterprise API authentication keys';
 
-CREATE INDEX idx_api_keys_client
+CREATE INDEX IF NOT EXISTS idx_api_keys_client
 ON security.api_keys(api_client_id);
 
-CREATE INDEX idx_api_keys_hash
+CREATE INDEX IF NOT EXISTS idx_api_keys_hash
 ON security.api_keys(api_key_hash);
 
 -- =============================================================================
 -- PERSONAL ACCESS TOKENS
 -- =============================================================================
 
-CREATE TABLE security.personal_access_tokens
+CREATE TABLE IF NOT EXISTS security.personal_access_tokens
 (
     personal_access_token_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -789,14 +774,14 @@ CREATE TABLE security.personal_access_tokens
 COMMENT ON TABLE security.personal_access_tokens
 IS 'User generated API access tokens';
 
-CREATE INDEX idx_personal_access_user
+CREATE INDEX IF NOT EXISTS idx_personal_access_user
 ON security.personal_access_tokens(user_id);
 
 -- =============================================================================
 -- EXTERNAL ACCESS TOKENS
 -- =============================================================================
 
-CREATE TABLE security.external_access_tokens
+CREATE TABLE IF NOT EXISTS security.external_access_tokens
 (
     external_access_token_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -826,14 +811,14 @@ CREATE TABLE security.external_access_tokens
 COMMENT ON TABLE security.external_access_tokens
 IS 'Temporary secure portal invitations';
 
-CREATE INDEX idx_external_access_token
+CREATE INDEX IF NOT EXISTS idx_external_access_token
 ON security.external_access_tokens(access_token);
 
 -- =============================================================================
 -- DEVICE CHALLENGES
 -- =============================================================================
 
-CREATE TABLE security.device_challenges
+CREATE TABLE IF NOT EXISTS security.device_challenges
 (
     challenge_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -861,7 +846,7 @@ IS 'Unknown device verification challenges';
 -- SESSION REVOCATION LOG
 -- =============================================================================
 
-CREATE TABLE security.session_revocations
+CREATE TABLE IF NOT EXISTS security.session_revocations
 (
     revocation_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -883,7 +868,7 @@ IS 'Historical session revocations';
 -- ENCRYPTION KEY REGISTRY
 -- =============================================================================
 
-CREATE TABLE security.encryption_key_registry
+CREATE TABLE IF NOT EXISTS security.encryption_key_registry
 (
     encryption_key_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -916,7 +901,7 @@ IS 'Metadata registry for encryption keys';
 -- IP ACCESS CONTROL
 -- =============================================================================
 
-CREATE TABLE security.ip_access_rules
+CREATE TABLE IF NOT EXISTS security.ip_access_rules
 (
     ip_rule_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -940,7 +925,7 @@ CREATE TABLE security.ip_access_rules
 COMMENT ON TABLE security.ip_access_rules
 IS 'IP allow and deny rules';
 
-CREATE INDEX idx_ip_access_network
+CREATE INDEX IF NOT EXISTS idx_ip_access_network
 ON security.ip_access_rules
 USING GIST(network inet_ops);
 
@@ -948,7 +933,7 @@ USING GIST(network inet_ops);
 -- SECURITY CONFIGURATION HISTORY
 -- =============================================================================
 
-CREATE TABLE security.configuration_history
+CREATE TABLE IF NOT EXISTS security.configuration_history
 (
     configuration_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -976,29 +961,25 @@ IS 'Historical security configuration changes';
 CREATE OR REPLACE VIEW security.security_health_summary
 AS
 SELECT
-
 (
-SELECT count(*)
-FROM security.active_sessions
-WHERE session_status='active'
+    SELECT count(*)
+    FROM security.active_sessions
+    WHERE session_status = 'active'
 ) AS active_sessions,
-
 (
-SELECT count(*)
-FROM security.trusted_devices
-WHERE is_active
+    SELECT count(*)
+    FROM security.trusted_devices
+    WHERE is_active
 ) AS trusted_devices,
-
 (
-SELECT count(*)
-FROM security.security_events
-WHERE resolved=FALSE
+    SELECT count(*)
+    FROM security.security_events
+    WHERE resolved = FALSE
 ) AS unresolved_security_events,
-
 (
-SELECT count(*)
-FROM security.api_clients
-WHERE is_active
+    SELECT count(*)
+    FROM security.api_clients
+    WHERE is_active
 ) AS active_api_clients;
 
 COMMENT ON VIEW security.security_health_summary
@@ -1011,14 +992,12 @@ IS 'Enterprise security dashboard summary';
 DO
 $$
 BEGIN
-
     RAISE NOTICE '';
     RAISE NOTICE '===============================================';
     RAISE NOTICE 'Enterprise Security Infrastructure Installed';
     RAISE NOTICE '003_security.sql Completed Successfully';
     RAISE NOTICE '===============================================';
     RAISE NOTICE '';
-
 END;
 $$;
 
