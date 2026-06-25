@@ -5,131 +5,415 @@ KUTLWANO & ASSOCIATE (PTY) LTD
 Enterprise Medico-Legal Platform
 
 FILE
-009_appointments.sql
+008_claimants.sql
 
 VERSION
-1.0 FINAL
+1.1 FIXED
 
 DESCRIPTION
 
-Enterprise Appointment Scheduling Engine
+Enterprise Claimant Management System
 
-This module coordinates every medical assessment,
-consultation, virtual appointment, hospital visit,
-home visit and multidisciplinary assessment.
-
+This version is idempotent and safe to rerun.
 ===============================================================================
 */
 
 BEGIN;
 
 -- =============================================================================
--- APPOINTMENTS
+-- CLAIMANTS
 -- =============================================================================
 
-CREATE TABLE appointment.appointments
+CREATE TABLE IF NOT EXISTS claimant.claimants
 (
-    appointment_id UUID PRIMARY KEY
+    claimant_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
-    appointment_number VARCHAR(30)
+    claimant_number VARCHAR(30)
         NOT NULL UNIQUE
-        DEFAULT core.generate_appointment_number(),
+        DEFAULT core.generate_claimant_number(),
 
     master_file_id UUID NOT NULL
         REFERENCES master.master_files(master_file_id),
 
-    claimant_id UUID NOT NULL
-        REFERENCES claimant.claimants(claimant_id),
+    title VARCHAR(20),
 
-    medical_expert_id UUID NOT NULL
-        REFERENCES expert.medical_experts(medical_expert_id),
-
-    practice_location_id UUID
-        REFERENCES expert.practice_locations(practice_location_id),
-
-    consulting_room_id UUID
-        REFERENCES expert.consulting_rooms(consulting_room_id),
-
-    assessment_type assessment.assessment_type
+    first_name VARCHAR(120)
         NOT NULL,
 
-    appointment_status appointment.appointment_status
-        NOT NULL DEFAULT 'scheduled',
+    middle_name VARCHAR(120),
 
-    attendance_status appointment.attendance_status
-        DEFAULT 'pending',
-
-    appointment_priority master.case_priority
-        DEFAULT 'normal',
-
-    appointment_mode appointment.appointment_mode
+    last_name VARCHAR(120)
         NOT NULL,
 
-    scheduled_start TIMESTAMPTZ
+    initials VARCHAR(20),
+
+    gender master.gender
         NOT NULL,
 
-    scheduled_end TIMESTAMPTZ
-        NOT NULL,
+    marital_status master.marital_status,
 
-    estimated_duration_minutes INTEGER
-        DEFAULT 60,
+    date_of_birth DATE,
 
-    actual_start TIMESTAMPTZ,
+    age INTEGER,
 
-    actual_end TIMESTAMPTZ,
+    south_african_id VARCHAR(13),
 
-    created_by UUID
-        NOT NULL,
+    passport_number VARCHAR(80),
 
-    booked_at TIMESTAMPTZ
+    nationality VARCHAR(120)
+        DEFAULT 'South African',
+
+    race master.population_group,
+
+    preferred_language VARCHAR(60)
+        DEFAULT 'English',
+
+    literacy_level VARCHAR(60),
+
+    deceased BOOLEAN
+        DEFAULT FALSE,
+
+    date_of_death DATE,
+
+    claimant_status master.claimant_status
+        DEFAULT 'active',
+
+    created_by UUID,
+
+    created_at TIMESTAMPTZ
         DEFAULT core.utc_now(),
 
-    last_updated TIMESTAMPTZ
+    updated_at TIMESTAMPTZ
+        DEFAULT core.utc_now(),
+
+    archived_at TIMESTAMPTZ
+);
+
+COMMENT ON TABLE claimant.claimants
+IS 'Enterprise claimant register';
+
+CREATE INDEX IF NOT EXISTS idx_claimants_master
+ON claimant.claimants(master_file_id);
+
+CREATE INDEX IF NOT EXISTS idx_claimants_lastname
+ON claimant.claimants(last_name);
+
+CREATE INDEX IF NOT EXISTS idx_claimants_id
+ON claimant.claimants(south_african_id);
+
+CREATE INDEX IF NOT EXISTS idx_claimants_status
+ON claimant.claimants(claimant_status);
+
+-- =============================================================================
+-- CONTACT INFORMATION
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.contact_information
+(
+    contact_information_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    email CITEXT,
+
+    mobile_number VARCHAR(30),
+
+    alternate_mobile VARCHAR(30),
+
+    home_number VARCHAR(30),
+
+    work_number VARCHAR(30),
+
+    whatsapp_number VARCHAR(30),
+
+    preferred_contact_method notifications.notification_channel,
+
+    emergency_contact_name VARCHAR(200),
+
+    emergency_contact_number VARCHAR(30),
+
+    emergency_relationship VARCHAR(120),
+
+    verified BOOLEAN
+        DEFAULT FALSE,
+
+    verified_at TIMESTAMPTZ,
+
+    created_at TIMESTAMPTZ
         DEFAULT core.utc_now()
 );
 
-COMMENT ON TABLE appointment.appointments
-IS 'Enterprise appointment register';
-
-CREATE INDEX idx_appointment_master
-ON appointment.appointments(master_file_id);
-
-CREATE INDEX idx_appointment_claimant
-ON appointment.appointments(claimant_id);
-
-CREATE INDEX idx_appointment_expert
-ON appointment.appointments(medical_expert_id);
-
-CREATE INDEX idx_appointment_start
-ON appointment.appointments(scheduled_start);
-
-CREATE INDEX idx_appointment_status
-ON appointment.appointments(appointment_status);
+COMMENT ON TABLE claimant.contact_information
+IS 'Claimant contact information';
 
 -- =============================================================================
--- APPOINTMENT PARTICIPANTS
+-- ADDRESSES
 -- =============================================================================
 
-CREATE TABLE appointment.participants
+CREATE TABLE IF NOT EXISTS claimant.addresses
 (
-    participant_id UUID PRIMARY KEY
+    claimant_address_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
-    appointment_id UUID NOT NULL
-        REFERENCES appointment.appointments(appointment_id)
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
         ON DELETE CASCADE,
 
-    participant_type appointment.participant_type
-        NOT NULL,
+    address_type VARCHAR(50),
 
-    reference_id UUID
-        NOT NULL,
+    address_line_1 VARCHAR(255),
 
-    attendance_required BOOLEAN
+    address_line_2 VARCHAR(255),
+
+    suburb VARCHAR(150),
+
+    city VARCHAR(150),
+
+    province VARCHAR(150),
+
+    postal_code VARCHAR(20),
+
+    country VARCHAR(120)
+        DEFAULT 'South Africa',
+
+    latitude NUMERIC(10,7),
+
+    longitude NUMERIC(10,7),
+
+    verified BOOLEAN
+        DEFAULT FALSE,
+
+    created_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE claimant.addresses
+IS 'Residential and postal addresses';
+
+-- =============================================================================
+-- EMPLOYMENT
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.employment
+(
+    employment_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    employer_name VARCHAR(255),
+
+    occupation VARCHAR(200),
+
+    industry VARCHAR(200),
+
+    employment_status VARCHAR(100),
+
+    monthly_income NUMERIC(18,2),
+
+    employment_start DATE,
+
+    employment_end DATE,
+
+    employer_contact VARCHAR(255),
+
+    employer_phone VARCHAR(30),
+
+    physically_demanding BOOLEAN
+        DEFAULT FALSE,
+
+    created_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE claimant.employment
+IS 'Employment history';
+
+-- =============================================================================
+-- NEXT OF KIN
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.next_of_kin
+(
+    next_of_kin_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    full_name VARCHAR(200),
+
+    relationship VARCHAR(120),
+
+    mobile_number VARCHAR(30),
+
+    alternate_number VARCHAR(30),
+
+    email CITEXT,
+
+    address TEXT,
+
+    primary_contact BOOLEAN
         DEFAULT TRUE,
 
-    attendance_confirmed BOOLEAN
+    created_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE claimant.next_of_kin
+IS 'Next of kin';
+
+-- =============================================================================
+-- DEPENDANTS
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.dependants
+(
+    dependant_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    full_name VARCHAR(200),
+
+    relationship VARCHAR(120),
+
+    date_of_birth DATE,
+
+    financially_dependent BOOLEAN
+        DEFAULT TRUE,
+
+    disability BOOLEAN
+        DEFAULT FALSE,
+
+    notes TEXT
+);
+
+COMMENT ON TABLE claimant.dependants
+IS 'Claimant dependants';
+
+-- =============================================================================
+-- IDENTITY DOCUMENTS
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.identity_documents
+(
+    identity_document_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    document_type documents.document_category,
+
+    document_number VARCHAR(120),
+
+    issue_date DATE,
+
+    expiry_date DATE,
+
+    issuing_authority VARCHAR(255),
+
+    verified BOOLEAN
+        DEFAULT FALSE,
+
+    uploaded_document UUID,
+
+    created_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE claimant.identity_documents
+IS 'Identity verification documents';
+
+-- =============================================================================
+-- MEDICAL HISTORY
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.medical_history
+(
+    medical_history_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    blood_group VARCHAR(10),
+
+    height_cm NUMERIC(6,2),
+
+    weight_kg NUMERIC(6,2),
+
+    bmi NUMERIC(6,2),
+
+    smoker BOOLEAN
+        DEFAULT FALSE,
+
+    alcohol_use BOOLEAN
+        DEFAULT FALSE,
+
+    recreational_drug_use BOOLEAN
+        DEFAULT FALSE,
+
+    pregnant BOOLEAN
+        DEFAULT FALSE,
+
+    pregnancy_weeks INTEGER,
+
+    primary_physician VARCHAR(255),
+
+    physician_contact VARCHAR(100),
+
+    medical_notes TEXT,
+
+    created_at TIMESTAMPTZ
+        DEFAULT core.utc_now(),
+
+    updated_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE claimant.medical_history
+IS 'General medical profile';
+
+CREATE INDEX IF NOT EXISTS idx_medical_history_claimant
+ON claimant.medical_history(claimant_id);
+
+-- =============================================================================
+-- CHRONIC CONDITIONS
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.chronic_conditions
+(
+    chronic_condition_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    condition_name VARCHAR(255)
+        NOT NULL,
+
+    diagnosis_date DATE,
+
+    treating_doctor VARCHAR(255),
+
+    current BOOLEAN
+        DEFAULT TRUE,
+
+    medication_required BOOLEAN
         DEFAULT FALSE,
 
     notes TEXT,
@@ -138,134 +422,30 @@ CREATE TABLE appointment.participants
         DEFAULT core.utc_now()
 );
 
-COMMENT ON TABLE appointment.participants
-IS 'Appointment participants';
+COMMENT ON TABLE claimant.chronic_conditions
+IS 'Chronic illnesses';
 
 -- =============================================================================
--- APPOINTMENT CALENDAR
+-- ALLERGIES
 -- =============================================================================
 
-CREATE TABLE appointment.calendar_events
+CREATE TABLE IF NOT EXISTS claimant.allergies
 (
-    calendar_event_id UUID PRIMARY KEY
+    allergy_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
-    appointment_id UUID
-        REFERENCES appointment.appointments(appointment_id)
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
         ON DELETE CASCADE,
 
-    calendar_owner UUID,
+    allergy_name VARCHAR(255)
+        NOT NULL,
 
-    event_title VARCHAR(255),
+    allergy_type VARCHAR(100),
 
-    event_description TEXT,
+    severity VARCHAR(50),
 
-    start_datetime TIMESTAMPTZ,
-
-    end_datetime TIMESTAMPTZ,
-
-    reminder_minutes INTEGER
-        DEFAULT 60,
-
-    all_day BOOLEAN
-        DEFAULT FALSE,
-
-    colour VARCHAR(20),
-
-    created_at TIMESTAMPTZ
-        DEFAULT core.utc_now()
-);
-
-COMMENT ON TABLE appointment.calendar_events
-IS 'Calendar events';
-
--- =============================================================================
--- APPOINTMENT CHECK-IN
--- =============================================================================
-
-CREATE TABLE appointment.check_in
-(
-    check_in_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    appointment_id UUID UNIQUE
-        REFERENCES appointment.appointments(appointment_id)
-        ON DELETE CASCADE,
-
-    checked_in_by UUID,
-
-    checked_in_at TIMESTAMPTZ,
-
-    reception_notes TEXT,
-
-    identity_verified BOOLEAN
-        DEFAULT FALSE,
-
-    consent_verified BOOLEAN
-        DEFAULT FALSE,
-
-    payment_verified BOOLEAN
-        DEFAULT FALSE
-);
-
-COMMENT ON TABLE appointment.check_in
-IS 'Reception check-in';
-
--- =============================================================================
--- APPOINTMENT CHECK-OUT
--- =============================================================================
-
-CREATE TABLE appointment.check_out
-(
-    check_out_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    appointment_id UUID UNIQUE
-        REFERENCES appointment.appointments(appointment_id)
-        ON DELETE CASCADE,
-
-    checked_out_by UUID,
-
-    checked_out_at TIMESTAMPTZ,
-
-    follow_up_required BOOLEAN
-        DEFAULT FALSE,
-
-    follow_up_notes TEXT,
-
-    report_required BOOLEAN
-        DEFAULT TRUE,
-
-    documents_received BOOLEAN
-        DEFAULT FALSE
-);
-
-COMMENT ON TABLE appointment.check_out
-IS 'Appointment checkout';
-
--- =============================================================================
--- WAITING LIST
--- =============================================================================
-
-CREATE TABLE appointment.waiting_list
-(
-    waiting_list_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    claimant_id UUID
-        REFERENCES claimant.claimants(claimant_id),
-
-    master_file_id UUID
-        REFERENCES master.master_files(master_file_id),
-
-    assessment_type assessment.assessment_type,
-
-    preferred_expert UUID,
-
-    preferred_date DATE,
-
-    priority master.case_priority
-        DEFAULT 'normal',
+    reaction_description TEXT,
 
     active BOOLEAN
         DEFAULT TRUE,
@@ -274,504 +454,507 @@ CREATE TABLE appointment.waiting_list
         DEFAULT core.utc_now()
 );
 
-COMMENT ON TABLE appointment.waiting_list
-IS 'Appointment waiting list';
+COMMENT ON TABLE claimant.allergies
+IS 'Known allergies';
 
 -- =============================================================================
--- APPOINTMENT CONFLICTS
+-- CURRENT MEDICATION
 -- =============================================================================
 
-CREATE TABLE appointment.conflicts
+CREATE TABLE IF NOT EXISTS claimant.current_medication
 (
-    conflict_id UUID PRIMARY KEY
+    medication_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
-    appointment_id UUID
-        REFERENCES appointment.appointments(appointment_id),
-
-    conflicting_appointment UUID,
-
-    conflict_type VARCHAR(120),
-
-    conflict_description TEXT,
-
-    resolved BOOLEAN
-        DEFAULT FALSE,
-
-    resolved_by UUID,
-
-    resolved_at TIMESTAMPTZ
-);
-
-COMMENT ON TABLE appointment.conflicts
-IS 'Scheduling conflicts';
-
--- =============================================================================
--- ROOM BOOKINGS
--- =============================================================================
-
-CREATE TABLE appointment.room_bookings
-(
-    room_booking_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    consulting_room_id UUID
-        REFERENCES expert.consulting_rooms(consulting_room_id),
-
-    appointment_id UUID
-        REFERENCES appointment.appointments(appointment_id)
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
         ON DELETE CASCADE,
 
-    booking_start TIMESTAMPTZ,
+    medication_name VARCHAR(255)
+        NOT NULL,
 
-    booking_end TIMESTAMPTZ,
+    dosage VARCHAR(100),
 
-    booking_status appointment.booking_status
-        DEFAULT 'reserved',
+    frequency VARCHAR(100),
 
-    created_at TIMESTAMPTZ
-        DEFAULT core.utc_now()
-);
+    prescribing_doctor VARCHAR(255),
 
-COMMENT ON TABLE appointment.room_bookings
-IS 'Consulting room bookings';
+    start_date DATE,
 
--- =============================================================================
--- APPOINTMENT RESCHEDULE HISTORY
--- =============================================================================
+    end_date DATE,
 
-CREATE TABLE appointment.reschedule_history
-(
-    reschedule_history_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    appointment_id UUID NOT NULL
-        REFERENCES appointment.appointments(appointment_id)
-        ON DELETE CASCADE,
-
-    previous_start TIMESTAMPTZ NOT NULL,
-
-    previous_end TIMESTAMPTZ NOT NULL,
-
-    new_start TIMESTAMPTZ NOT NULL,
-
-    new_end TIMESTAMPTZ NOT NULL,
-
-    reschedule_reason TEXT,
-
-    requested_by UUID,
-
-    approved_by UUID,
-
-    rescheduled_at TIMESTAMPTZ
-        DEFAULT core.utc_now()
-);
-
-COMMENT ON TABLE appointment.reschedule_history
-IS 'Appointment reschedule audit trail';
-
--- =============================================================================
--- APPOINTMENT CANCELLATIONS
--- =============================================================================
-
-CREATE TABLE appointment.cancellations
-(
-    cancellation_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    appointment_id UUID NOT NULL
-        REFERENCES appointment.appointments(appointment_id)
-        ON DELETE CASCADE,
-
-    cancellation_reason TEXT,
-
-    cancelled_by UUID,
-
-    cancellation_source VARCHAR(100),
-
-    cancellation_date TIMESTAMPTZ
-        DEFAULT core.utc_now(),
-
-    refund_required BOOLEAN
-        DEFAULT FALSE,
-
-    rebooking_required BOOLEAN
+    active BOOLEAN
         DEFAULT TRUE
 );
 
-COMMENT ON TABLE appointment.cancellations
-IS 'Appointment cancellation history';
+COMMENT ON TABLE claimant.current_medication
+IS 'Current medication';
 
 -- =============================================================================
--- ATTENDANCE TRACKING
+-- SURGICAL HISTORY
 -- =============================================================================
 
-CREATE TABLE appointment.attendance_tracking
+CREATE TABLE IF NOT EXISTS claimant.surgical_history
 (
-    attendance_tracking_id UUID PRIMARY KEY
+    surgery_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
-    appointment_id UUID NOT NULL
-        REFERENCES appointment.appointments(appointment_id)
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
         ON DELETE CASCADE,
 
-    claimant_present BOOLEAN
-        DEFAULT FALSE,
+    procedure_name VARCHAR(255),
 
-    expert_present BOOLEAN
-        DEFAULT FALSE,
+    surgery_date DATE,
 
-    attorney_present BOOLEAN
-        DEFAULT FALSE,
+    hospital_name VARCHAR(255),
 
-    interpreter_present BOOLEAN
-        DEFAULT FALSE,
+    surgeon_name VARCHAR(255),
 
-    escort_present BOOLEAN
-        DEFAULT FALSE,
-
-    attendance_notes TEXT,
-
-    recorded_by UUID,
-
-    recorded_at TIMESTAMPTZ
-        DEFAULT core.utc_now()
-);
-
-COMMENT ON TABLE appointment.attendance_tracking
-IS 'Attendance register';
-
--- =============================================================================
--- MULTI EXPERT ASSESSMENTS
--- =============================================================================
-
-CREATE TABLE appointment.multi_expert_assessments
-(
-    multi_expert_assessment_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    appointment_id UUID NOT NULL
-        REFERENCES appointment.appointments(appointment_id)
-        ON DELETE CASCADE,
-
-    lead_expert UUID
-        REFERENCES expert.medical_experts(medical_expert_id),
-
-    assessment_title VARCHAR(255),
-
-    multidisciplinary BOOLEAN
-        DEFAULT TRUE,
-
-    created_at TIMESTAMPTZ
-        DEFAULT core.utc_now()
-);
-
-COMMENT ON TABLE appointment.multi_expert_assessments
-IS 'Multi-disciplinary assessments';
-
--- =============================================================================
--- MULTI EXPERT MEMBERS
--- =============================================================================
-
-CREATE TABLE appointment.multi_expert_members
-(
-    multi_expert_member_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    multi_expert_assessment_id UUID
-        REFERENCES appointment.multi_expert_assessments(multi_expert_assessment_id)
-        ON DELETE CASCADE,
-
-    medical_expert_id UUID
-        REFERENCES expert.medical_experts(medical_expert_id),
-
-    assessment_role VARCHAR(120),
-
-    attendance_confirmed BOOLEAN
-        DEFAULT FALSE,
-
-    UNIQUE(multi_expert_assessment_id,medical_expert_id)
-);
-
-COMMENT ON TABLE appointment.multi_expert_members
-IS 'Experts participating in multidisciplinary assessments';
-
--- =============================================================================
--- VIRTUAL CONSULTATIONS
--- =============================================================================
-
-CREATE TABLE appointment.virtual_consultations
-(
-    virtual_consultation_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    appointment_id UUID UNIQUE
-        REFERENCES appointment.appointments(appointment_id)
-        ON DELETE CASCADE,
-
-    meeting_platform VARCHAR(120),
-
-    meeting_link TEXT,
-
-    meeting_id VARCHAR(255),
-
-    meeting_password_encrypted TEXT,
-
-    session_started TIMESTAMPTZ,
-
-    session_ended TIMESTAMPTZ,
-
-    recording_available BOOLEAN
-        DEFAULT FALSE,
-
-    recording_location TEXT
-);
-
-COMMENT ON TABLE appointment.virtual_consultations
-IS 'Virtual consultation sessions';
-
--- =============================================================================
--- APPOINTMENT REMINDERS
--- =============================================================================
-
-CREATE TABLE appointment.reminders
-(
-    reminder_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    appointment_id UUID NOT NULL
-        REFERENCES appointment.appointments(appointment_id)
-        ON DELETE CASCADE,
-
-    reminder_channel notifications.notification_channel,
-
-    recipient_reference UUID,
-
-    scheduled_send_time TIMESTAMPTZ,
-
-    sent BOOLEAN
-        DEFAULT FALSE,
-
-    sent_at TIMESTAMPTZ,
-
-    delivery_status VARCHAR(100),
-
-    retry_count INTEGER
-        DEFAULT 0
-);
-
-COMMENT ON TABLE appointment.reminders
-IS 'SMS, Email and WhatsApp reminders';
-
-CREATE INDEX idx_appointment_reminders_sendtime
-ON appointment.reminders(scheduled_send_time);
-
--- =============================================================================
--- TRANSPORT BOOKINGS
--- =============================================================================
-
-CREATE TABLE appointment.transport_bookings
-(
-    transport_booking_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    appointment_id UUID
-        REFERENCES appointment.appointments(appointment_id)
-        ON DELETE CASCADE,
-
-    pickup_address TEXT,
-
-    destination_address TEXT,
-
-    pickup_time TIMESTAMPTZ,
-
-    return_trip BOOLEAN
-        DEFAULT TRUE,
-
-    transport_provider VARCHAR(255),
-
-    booking_status appointment.transport_status
-        DEFAULT 'scheduled',
-
-    special_requirements TEXT
-);
-
-COMMENT ON TABLE appointment.transport_bookings
-IS 'Claimant transport arrangements';
-
--- =============================================================================
--- DRIVER ALLOCATIONS
--- =============================================================================
-
-CREATE TABLE appointment.driver_allocations
-(
-    driver_allocation_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    transport_booking_id UUID
-        REFERENCES appointment.transport_bookings(transport_booking_id)
-        ON DELETE CASCADE,
-
-    driver_name VARCHAR(255),
-
-    driver_contact VARCHAR(50),
-
-    vehicle_registration VARCHAR(50),
-
-    vehicle_type VARCHAR(100),
-
-    allocated_at TIMESTAMPTZ
-        DEFAULT core.utc_now()
-);
-
-COMMENT ON TABLE appointment.driver_allocations
-IS 'Assigned drivers';
-
--- =============================================================================
--- ACCOMMODATION BOOKINGS
--- =============================================================================
-
-CREATE TABLE appointment.accommodation_bookings
-(
-    accommodation_booking_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    appointment_id UUID
-        REFERENCES appointment.appointments(appointment_id)
-        ON DELETE CASCADE,
-
-    accommodation_name VARCHAR(255),
-
-    check_in_date DATE,
-
-    check_out_date DATE,
-
-    room_type VARCHAR(100),
-
-    booking_reference VARCHAR(100),
-
-    booking_cost NUMERIC(18,2),
-
-    booking_status VARCHAR(100)
-);
-
-COMMENT ON TABLE appointment.accommodation_bookings
-IS 'Accommodation arrangements';
-
--- =============================================================================
--- ESCORT MANAGEMENT
--- =============================================================================
-
-CREATE TABLE appointment.escort_management
-(
-    escort_management_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    appointment_id UUID
-        REFERENCES appointment.appointments(appointment_id)
-        ON DELETE CASCADE,
-
-    escort_name VARCHAR(255),
-
-    relationship_to_claimant VARCHAR(120),
-
-    contact_number VARCHAR(50),
-
-    approved BOOLEAN
-        DEFAULT TRUE,
+    successful BOOLEAN,
 
     notes TEXT
 );
 
-COMMENT ON TABLE appointment.escort_management
-IS 'Claimant escort management';
+COMMENT ON TABLE claimant.surgical_history
+IS 'Previous surgeries';
 
 -- =============================================================================
--- CALENDAR SYNCHRONIZATION
+-- PREVIOUS INJURIES
 -- =============================================================================
 
-CREATE TABLE appointment.calendar_sync
+CREATE TABLE IF NOT EXISTS claimant.previous_injuries
 (
-    calendar_sync_id UUID PRIMARY KEY
+    previous_injury_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
-    appointment_id UUID
-        REFERENCES appointment.appointments(appointment_id)
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
         ON DELETE CASCADE,
 
-    sync_provider VARCHAR(100),
+    injury_description TEXT,
 
-    external_event_id VARCHAR(255),
+    injury_date DATE,
 
-    last_sync_at TIMESTAMPTZ,
+    body_part VARCHAR(120),
 
-    sync_status VARCHAR(100),
+    recovered BOOLEAN,
 
-    sync_error TEXT
+    permanent_impairment BOOLEAN,
+
+    impairment_percentage NUMERIC(5,2),
+
+    notes TEXT
 );
 
-COMMENT ON TABLE appointment.calendar_sync
-IS 'External calendar synchronization';
+COMMENT ON TABLE claimant.previous_injuries
+IS 'Historical injuries';
 
 -- =============================================================================
--- APPOINTMENT WORKFLOW HISTORY
+-- DISABILITY INFORMATION
 -- =============================================================================
 
-CREATE TABLE appointment.workflow_history
+CREATE TABLE IF NOT EXISTS claimant.disability_information
 (
-    workflow_history_id UUID PRIMARY KEY
+    disability_information_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
-    appointment_id UUID
-        REFERENCES appointment.appointments(appointment_id)
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
         ON DELETE CASCADE,
 
-    previous_status appointment.appointment_status,
+    disability_type VARCHAR(150),
 
-    new_status appointment.appointment_status,
+    disability_percentage NUMERIC(5,2),
 
-    changed_by UUID,
+    disability_start DATE,
 
-    change_reason TEXT,
+    permanent BOOLEAN,
 
-    changed_at TIMESTAMPTZ
+    assistive_devices TEXT,
+
+    disability_notes TEXT
+);
+
+COMMENT ON TABLE claimant.disability_information
+IS 'Disability information';
+
+-- =============================================================================
+-- ACCIDENT DETAILS
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.accident_details
+(
+    accident_detail_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    master_file_id UUID
+        REFERENCES master.master_files(master_file_id),
+
+    accident_date DATE,
+
+    accident_time TIME,
+
+    accident_type master.accident_type,
+
+    accident_location TEXT,
+
+    province VARCHAR(120),
+
+    municipality VARCHAR(150),
+
+    gps_latitude NUMERIC(10,7),
+
+    gps_longitude NUMERIC(10,7),
+
+    weather_conditions VARCHAR(120),
+
+    road_conditions VARCHAR(120),
+
+    accident_description TEXT,
+
+    claimant_role VARCHAR(120),
+
+    created_at TIMESTAMPTZ
         DEFAULT core.utc_now()
 );
 
-COMMENT ON TABLE appointment.workflow_history
-IS 'Appointment workflow audit history';
+COMMENT ON TABLE claimant.accident_details
+IS 'Accident details';
+
+CREATE INDEX IF NOT EXISTS idx_accident_master
+ON claimant.accident_details(master_file_id);
 
 -- =============================================================================
--- APPOINTMENT DOCUMENTS
+-- POLICE INFORMATION
 -- =============================================================================
 
-CREATE TABLE appointment.documents
+CREATE TABLE IF NOT EXISTS claimant.police_information
 (
-    appointment_document_id UUID PRIMARY KEY
+    police_information_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
-    appointment_id UUID NOT NULL
-        REFERENCES appointment.appointments(appointment_id)
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
         ON DELETE CASCADE,
 
-    document_category documents.document_category
+    police_station VARCHAR(255),
+
+    case_number VARCHAR(120),
+
+    investigating_officer VARCHAR(255),
+
+    officer_contact VARCHAR(100),
+
+    statement_taken BOOLEAN,
+
+    docket_available BOOLEAN,
+
+    notes TEXT
+);
+
+COMMENT ON TABLE claimant.police_information
+IS 'Police case information';
+
+-- =============================================================================
+-- HOSPITAL ADMISSIONS
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.hospital_admissions
+(
+    hospital_admission_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    hospital_name VARCHAR(255),
+
+    admission_date DATE,
+
+    discharge_date DATE,
+
+    attending_doctor VARCHAR(255),
+
+    icu_admission BOOLEAN,
+
+    admission_reason TEXT,
+
+    discharge_summary TEXT
+);
+
+COMMENT ON TABLE claimant.hospital_admissions
+IS 'Hospital admission history';
+
+-- =============================================================================
+-- RAF INFORMATION
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.raf_information
+(
+    raf_information_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    raf_claim_number VARCHAR(120),
+
+    accident_report_number VARCHAR(120),
+
+    claim_status VARCHAR(120),
+
+    date_submitted DATE,
+
+    settlement_status VARCHAR(120),
+
+    estimated_claim_value NUMERIC(18,2),
+
+    notes TEXT
+);
+
+COMMENT ON TABLE claimant.raf_information
+IS 'Road Accident Fund information';
+
+-- =============================================================================
+-- MEDICAL AID
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.medical_aid
+(
+    medical_aid_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    scheme_name VARCHAR(255),
+
+    membership_number VARCHAR(120),
+
+    principal_member VARCHAR(255),
+
+    dependant_code VARCHAR(30),
+
+    active BOOLEAN
+        DEFAULT TRUE
+);
+
+COMMENT ON TABLE claimant.medical_aid
+IS 'Medical aid information';
+
+-- =============================================================================
+-- POPIA CONSENT
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.popia_consent
+(
+    popia_consent_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    consent_given BOOLEAN
         NOT NULL,
 
-    file_name TEXT NOT NULL,
+    consent_date TIMESTAMPTZ,
 
-    original_file_name TEXT,
+    consent_version VARCHAR(30),
 
-    file_extension VARCHAR(20),
+    signed_by VARCHAR(255),
 
-    mime_type VARCHAR(120),
+    ip_address INET,
+
+    withdrawn BOOLEAN
+        DEFAULT FALSE,
+
+    withdrawn_date TIMESTAMPTZ
+);
+
+COMMENT ON TABLE claimant.popia_consent
+IS 'Claimant POPIA consent history';
+
+-- =============================================================================
+-- CLAIMANT BANKING DETAILS
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.banking_details
+(
+    banking_detail_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    bank_name VARCHAR(150),
+
+    account_holder VARCHAR(255),
+
+    account_type VARCHAR(50),
+
+    account_number_encrypted TEXT,
+
+    branch_code VARCHAR(20),
+
+    swift_code VARCHAR(20),
+
+    verified BOOLEAN
+        DEFAULT FALSE,
+
+    verified_by UUID,
+
+    verified_at TIMESTAMPTZ,
+
+    active BOOLEAN
+        DEFAULT TRUE,
+
+    created_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE claimant.banking_details
+IS 'Encrypted claimant banking information';
+
+-- =============================================================================
+-- APPOINTMENT HISTORY
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.appointment_history
+(
+    appointment_history_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    appointment_id UUID,
+
+    appointment_date TIMESTAMPTZ,
+
+    appointment_status appointment.appointment_status,
+
+    attendance_status appointment.attendance_status,
+
+    medical_expert_id UUID,
+
+    assessment_type assessment.assessment_type,
+
+    notes TEXT,
+
+    created_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE claimant.appointment_history
+IS 'Historical appointment register';
+
+CREATE INDEX IF NOT EXISTS idx_claimant_appointment_history
+ON claimant.appointment_history(claimant_id);
+
+-- =============================================================================
+-- ASSESSMENT HISTORY
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.assessment_history
+(
+    assessment_history_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    assessment_id UUID,
+
+    medical_expert_id UUID,
+
+    assessment_type assessment.assessment_type,
+
+    assessment_status assessment.assessment_status,
+
+    assessment_date TIMESTAMPTZ,
+
+    report_completed BOOLEAN
+        DEFAULT FALSE,
+
+    report_completion_date TIMESTAMPTZ,
+
+    impairment_percentage NUMERIC(5,2),
+
+    created_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE claimant.assessment_history
+IS 'Assessment history';
+
+-- =============================================================================
+-- COMMUNICATION HISTORY
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.communication_history
+(
+    communication_history_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    communication_channel notifications.notification_channel,
+
+    direction VARCHAR(20),
+
+    subject VARCHAR(255),
+
+    message TEXT,
+
+    related_master_file UUID,
+
+    sent_by UUID,
+
+    communication_date TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE claimant.communication_history
+IS 'Communication history';
+
+-- =============================================================================
+-- CLAIMANT DOCUMENT REGISTER
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.documents
+(
+    claimant_document_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    document_category documents.document_category,
+
+    file_name TEXT,
+
+    file_path TEXT,
+
+    mime_type VARCHAR(150),
 
     file_size BIGINT,
 
     checksum TEXT,
-
-    storage_provider VARCHAR(50),
-
-    file_path TEXT,
 
     uploaded_by UUID,
 
@@ -779,30 +962,97 @@ CREATE TABLE appointment.documents
         DEFAULT core.utc_now(),
 
     verified BOOLEAN
-        DEFAULT FALSE,
-
-    verified_by UUID,
-
-    verified_at TIMESTAMPTZ
+        DEFAULT FALSE
 );
 
-COMMENT ON TABLE appointment.documents
-IS 'Appointment documents';
+COMMENT ON TABLE claimant.documents
+IS 'Claimant document repository';
 
-CREATE INDEX idx_appointment_documents
-ON appointment.documents(appointment_id);
+CREATE INDEX IF NOT EXISTS idx_claimant_documents
+ON claimant.documents(claimant_id);
 
 -- =============================================================================
--- APPOINTMENT NOTES
+-- CLAIMANT PORTAL ACCOUNTS
 -- =============================================================================
 
-CREATE TABLE appointment.notes
+CREATE TABLE IF NOT EXISTS claimant.portal_accounts
 (
-    appointment_note_id UUID PRIMARY KEY
+    portal_account_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
-    appointment_id UUID NOT NULL
-        REFERENCES appointment.appointments(appointment_id)
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    external_user_id UUID,
+
+    portal_status external_access.access_status
+        DEFAULT 'pending_activation',
+
+    activation_date TIMESTAMPTZ,
+
+    first_login TIMESTAMPTZ,
+
+    last_login TIMESTAMPTZ,
+
+    failed_login_attempts INTEGER
+        DEFAULT 0,
+
+    account_locked BOOLEAN
+        DEFAULT FALSE,
+
+    created_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
+);
+
+COMMENT ON TABLE claimant.portal_accounts
+IS 'Claimant portal accounts';
+
+-- =============================================================================
+-- DOCUMENT SHARING
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.document_sharing
+(
+    document_share_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
+        ON DELETE CASCADE,
+
+    claimant_document_id UUID
+        REFERENCES claimant.documents(claimant_document_id)
+        ON DELETE CASCADE,
+
+    shared_by UUID,
+
+    shared_at TIMESTAMPTZ
+        DEFAULT core.utc_now(),
+
+    expires_at TIMESTAMPTZ,
+
+    revoked BOOLEAN
+        DEFAULT FALSE,
+
+    download_count INTEGER
+        DEFAULT 0
+);
+
+COMMENT ON TABLE claimant.document_sharing
+IS 'Secure claimant document sharing';
+
+-- =============================================================================
+-- INTERNAL NOTES
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS claimant.internal_notes
+(
+    internal_note_id UUID PRIMARY KEY
+        DEFAULT core.generate_uuid(),
+
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
         ON DELETE CASCADE,
 
     created_by UUID,
@@ -816,25 +1066,23 @@ CREATE TABLE appointment.notes
         DEFAULT FALSE,
 
     created_at TIMESTAMPTZ
-        DEFAULT core.utc_now(),
-
-    updated_at TIMESTAMPTZ
+        DEFAULT core.utc_now()
 );
 
-COMMENT ON TABLE appointment.notes
-IS 'Appointment notes';
+COMMENT ON TABLE claimant.internal_notes
+IS 'Internal claimant notes';
 
 -- =============================================================================
--- APPOINTMENT TIMELINE
+-- CLAIMANT TIMELINE
 -- =============================================================================
 
-CREATE TABLE appointment.timeline
+CREATE TABLE IF NOT EXISTS claimant.timeline
 (
     timeline_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
-    appointment_id UUID NOT NULL
-        REFERENCES appointment.appointments(appointment_id)
+    claimant_id UUID NOT NULL
+        REFERENCES claimant.claimants(claimant_id)
         ON DELETE CASCADE,
 
     timeline_type VARCHAR(100),
@@ -853,272 +1101,80 @@ CREATE TABLE appointment.timeline
         DEFAULT core.utc_now()
 );
 
-COMMENT ON TABLE appointment.timeline
-IS 'Appointment activity timeline';
-
-CREATE INDEX idx_appointment_timeline
-ON appointment.timeline(appointment_id);
+COMMENT ON TABLE claimant.timeline
+IS 'Claimant activity timeline';
 
 -- =============================================================================
--- EXPERT UTILISATION
+-- CLAIMANT DASHBOARD SUMMARY
 -- =============================================================================
 
-CREATE TABLE appointment.expert_utilisation
-(
-    expert_utilisation_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    medical_expert_id UUID NOT NULL
-        REFERENCES expert.medical_experts(medical_expert_id),
-
-    reporting_year INTEGER NOT NULL,
-
-    reporting_month INTEGER NOT NULL,
-
-    total_bookings INTEGER
-        DEFAULT 0,
-
-    completed_bookings INTEGER
-        DEFAULT 0,
-
-    cancelled_bookings INTEGER
-        DEFAULT 0,
-
-    no_show_bookings INTEGER
-        DEFAULT 0,
-
-    total_hours_booked NUMERIC(12,2)
-        DEFAULT 0,
-
-    utilisation_percentage NUMERIC(5,2)
-        DEFAULT 0,
-
-    average_daily_bookings NUMERIC(10,2)
-        DEFAULT 0,
-
-    updated_at TIMESTAMPTZ
-        DEFAULT core.utc_now(),
-
-    UNIQUE
-    (
-        medical_expert_id,
-        reporting_year,
-        reporting_month
-    )
-);
-
-COMMENT ON TABLE appointment.expert_utilisation
-IS 'Expert utilisation statistics';
-
--- =============================================================================
--- CONSULTING ROOM UTILISATION
--- =============================================================================
-
-CREATE TABLE appointment.room_utilisation
-(
-    room_utilisation_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    consulting_room_id UUID
-        REFERENCES expert.consulting_rooms(consulting_room_id),
-
-    reporting_year INTEGER,
-
-    reporting_month INTEGER,
-
-    total_bookings INTEGER
-        DEFAULT 0,
-
-    booked_hours NUMERIC(12,2)
-        DEFAULT 0,
-
-    available_hours NUMERIC(12,2)
-        DEFAULT 0,
-
-    utilisation_percentage NUMERIC(5,2)
-        DEFAULT 0,
-
-    UNIQUE
-    (
-        consulting_room_id,
-        reporting_year,
-        reporting_month
-    )
-);
-
-COMMENT ON TABLE appointment.room_utilisation
-IS 'Consulting room utilisation';
-
--- =============================================================================
--- APPOINTMENT KPI METRICS
--- =============================================================================
-
-CREATE TABLE appointment.kpi_metrics
-(
-    appointment_kpi_metric_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    reporting_date DATE UNIQUE,
-
-    appointments_created INTEGER
-        DEFAULT 0,
-
-    appointments_completed INTEGER
-        DEFAULT 0,
-
-    appointments_cancelled INTEGER
-        DEFAULT 0,
-
-    appointments_rescheduled INTEGER
-        DEFAULT 0,
-
-    average_waiting_minutes NUMERIC(10,2)
-        DEFAULT 0,
-
-    average_consultation_minutes NUMERIC(10,2)
-        DEFAULT 0,
-
-    average_booking_lead_days NUMERIC(10,2)
-        DEFAULT 0,
-
-    no_show_percentage NUMERIC(5,2)
-        DEFAULT 0,
-
-    updated_at TIMESTAMPTZ
-        DEFAULT core.utc_now()
-);
-
-COMMENT ON TABLE appointment.kpi_metrics
-IS 'Appointment KPI statistics';
-
--- =============================================================================
--- DAILY SCHEDULER DASHBOARD
--- =============================================================================
-
-CREATE TABLE appointment.scheduler_dashboard
-(
-    scheduler_dashboard_id UUID PRIMARY KEY
-        DEFAULT core.generate_uuid(),
-
-    dashboard_date DATE UNIQUE,
-
-    total_appointments INTEGER
-        DEFAULT 0,
-
-    completed INTEGER
-        DEFAULT 0,
-
-    cancelled INTEGER
-        DEFAULT 0,
-
-    in_progress INTEGER
-        DEFAULT 0,
-
-    waiting INTEGER
-        DEFAULT 0,
-
-    no_show INTEGER
-        DEFAULT 0,
-
-    overdue_reports INTEGER
-        DEFAULT 0,
-
-    updated_at TIMESTAMPTZ
-        DEFAULT core.utc_now()
-);
-
-COMMENT ON TABLE appointment.scheduler_dashboard
-IS 'Daily scheduling dashboard';
-
--- =============================================================================
--- APPOINTMENT DASHBOARD SUMMARY
--- =============================================================================
-
-CREATE TABLE appointment.dashboard_summary
+CREATE TABLE IF NOT EXISTS claimant.dashboard_summary
 (
     dashboard_summary_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
-    appointment_id UUID UNIQUE
-        REFERENCES appointment.appointments(appointment_id)
+    claimant_id UUID UNIQUE
+        REFERENCES claimant.claimants(claimant_id)
         ON DELETE CASCADE,
+
+    appointments_total INTEGER
+        DEFAULT 0,
+
+    assessments_completed INTEGER
+        DEFAULT 0,
+
+    reports_completed INTEGER
+        DEFAULT 0,
 
     documents_uploaded INTEGER
         DEFAULT 0,
 
-    reminders_sent INTEGER
+    unread_notifications INTEGER
         DEFAULT 0,
 
-    participants_registered INTEGER
+    outstanding_tasks INTEGER
         DEFAULT 0,
 
-    check_in_completed BOOLEAN
-        DEFAULT FALSE,
-
-    check_out_completed BOOLEAN
-        DEFAULT FALSE,
-
-    report_completed BOOLEAN
-        DEFAULT FALSE,
+    portal_last_login TIMESTAMPTZ,
 
     updated_at TIMESTAMPTZ
         DEFAULT core.utc_now()
 );
 
-COMMENT ON TABLE appointment.dashboard_summary
-IS 'Appointment dashboard summary';
+COMMENT ON TABLE claimant.dashboard_summary
+IS 'Claimant dashboard statistics';
 
 -- =============================================================================
--- ENTERPRISE APPOINTMENT VIEW
+-- ENTERPRISE CLAIMANT DIRECTORY
 -- =============================================================================
 
-CREATE VIEW appointment.v_appointment_overview
+CREATE OR REPLACE VIEW claimant.v_claimant_directory
 AS
 SELECT
-
-a.appointment_id,
-a.appointment_number,
-a.scheduled_start,
-a.scheduled_end,
-a.assessment_type,
-a.appointment_status,
-a.attendance_status,
-a.appointment_mode,
-
-mf.master_file_number,
-
-c.claimant_number,
-c.first_name,
-c.last_name,
-
-e.expert_number,
-e.first_name AS expert_first_name,
-e.last_name AS expert_last_name,
-
-pl.practice_name,
-
-loc.city,
-loc.province
-
-FROM appointment.appointments a
-
+    c.claimant_id,
+    c.claimant_number,
+    c.first_name,
+    c.last_name,
+    c.gender,
+    c.date_of_birth,
+    c.claimant_status,
+    mf.master_file_number,
+    mf.workflow_status,
+    ci.mobile_number,
+    ci.email,
+    ds.appointments_total,
+    ds.assessments_completed,
+    ds.documents_uploaded
+FROM claimant.claimants c
 LEFT JOIN master.master_files mf
-ON mf.master_file_id = a.master_file_id
+    ON mf.master_file_id = c.master_file_id
+LEFT JOIN claimant.contact_information ci
+    ON ci.claimant_id = c.claimant_id
+LEFT JOIN claimant.dashboard_summary ds
+    ON ds.claimant_id = c.claimant_id;
 
-LEFT JOIN claimant.claimants c
-ON c.claimant_id = a.claimant_id
-
-LEFT JOIN expert.medical_experts e
-ON e.medical_expert_id = a.medical_expert_id
-
-LEFT JOIN expert.practices pl
-ON pl.medical_expert_id = e.medical_expert_id
-
-LEFT JOIN expert.practice_locations loc
-ON loc.practice_location_id = a.practice_location_id;
-
-COMMENT ON VIEW appointment.v_appointment_overview
-IS 'Enterprise appointment directory';
+COMMENT ON VIEW claimant.v_claimant_directory
+IS 'Enterprise claimant directory';
 
 -- =============================================================================
 -- DEPLOYMENT VERIFICATION
@@ -1127,14 +1183,12 @@ IS 'Enterprise appointment directory';
 DO
 $$
 BEGIN
-
     RAISE NOTICE '';
     RAISE NOTICE '=======================================================';
-    RAISE NOTICE 'Appointment Scheduling Engine Installed Successfully';
-    RAISE NOTICE '009_appointments.sql Completed';
+    RAISE NOTICE 'Claimant Management Installed Successfully';
+    RAISE NOTICE '008_claimants.sql Completed';
     RAISE NOTICE '=======================================================';
     RAISE NOTICE '';
-
 END;
 $$;
 
