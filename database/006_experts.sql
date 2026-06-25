@@ -8,16 +8,13 @@ FILE
 006_experts.sql
 
 VERSION
-1.0 FINAL
+1.1 FIXED
 
 DESCRIPTION
 
 Medical Expert Management System
 
-This module manages every independent medical expert,
-specialist, assessor and healthcare professional working
-with Kutlwano & Associate.
-
+This version is idempotent and safe to rerun.
 ===============================================================================
 */
 
@@ -27,7 +24,7 @@ BEGIN;
 -- MEDICAL EXPERTS
 -- =============================================================================
 
-CREATE TABLE expert.medical_experts
+CREATE TABLE IF NOT EXISTS expert.medical_experts
 (
     medical_expert_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -97,23 +94,23 @@ CREATE TABLE expert.medical_experts
 COMMENT ON TABLE expert.medical_experts
 IS 'Registered medical experts';
 
-CREATE INDEX idx_medical_experts_specialty
+CREATE INDEX IF NOT EXISTS idx_medical_experts_specialty
 ON expert.medical_experts(medical_specialty);
 
-CREATE INDEX idx_medical_experts_status
+CREATE INDEX IF NOT EXISTS idx_medical_experts_status
 ON expert.medical_experts(expert_status);
 
-CREATE INDEX idx_medical_experts_email
+CREATE INDEX IF NOT EXISTS idx_medical_experts_email
 ON expert.medical_experts(email);
 
-CREATE INDEX idx_medical_experts_lastname
+CREATE INDEX IF NOT EXISTS idx_medical_experts_lastname
 ON expert.medical_experts(last_name);
 
 -- =============================================================================
 -- HPCSA REGISTRATION
 -- =============================================================================
 
-CREATE TABLE expert.hpcsa_registrations
+CREATE TABLE IF NOT EXISTS expert.hpcsa_registrations
 (
     hpcsa_registration_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -148,14 +145,14 @@ CREATE TABLE expert.hpcsa_registrations
 COMMENT ON TABLE expert.hpcsa_registrations
 IS 'HPCSA registration records';
 
-CREATE INDEX idx_hpcsa_registration_number
+CREATE INDEX IF NOT EXISTS idx_hpcsa_registration_number
 ON expert.hpcsa_registrations(registration_number);
 
 -- =============================================================================
 -- PRACTICES
 -- =============================================================================
 
-CREATE TABLE expert.practices
+CREATE TABLE IF NOT EXISTS expert.practices
 (
     practice_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -187,14 +184,14 @@ CREATE TABLE expert.practices
 COMMENT ON TABLE expert.practices
 IS 'Medical practices';
 
-CREATE INDEX idx_practices_expert
+CREATE INDEX IF NOT EXISTS idx_practices_expert
 ON expert.practices(medical_expert_id);
 
 -- =============================================================================
 -- PRACTICE LOCATIONS
 -- =============================================================================
 
-CREATE TABLE expert.practice_locations
+CREATE TABLE IF NOT EXISTS expert.practice_locations
 (
     practice_location_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -234,14 +231,14 @@ CREATE TABLE expert.practice_locations
 COMMENT ON TABLE expert.practice_locations
 IS 'Consulting room locations';
 
-CREATE INDEX idx_practice_locations_practice
+CREATE INDEX IF NOT EXISTS idx_practice_locations_practice
 ON expert.practice_locations(practice_id);
 
 -- =============================================================================
 -- CONSULTING ROOMS
 -- =============================================================================
 
-CREATE TABLE expert.consulting_rooms
+CREATE TABLE IF NOT EXISTS expert.consulting_rooms
 (
     consulting_room_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -276,7 +273,7 @@ IS 'Individual consulting rooms';
 -- QUALIFICATIONS
 -- =============================================================================
 
-CREATE TABLE expert.qualifications
+CREATE TABLE IF NOT EXISTS expert.qualifications
 (
     qualification_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -305,14 +302,14 @@ CREATE TABLE expert.qualifications
 COMMENT ON TABLE expert.qualifications
 IS 'Medical qualifications';
 
-CREATE INDEX idx_qualifications_expert
+CREATE INDEX IF NOT EXISTS idx_qualifications_expert
 ON expert.qualifications(medical_expert_id);
 
 -- =============================================================================
 -- SUB-SPECIALITIES
 -- =============================================================================
 
-CREATE TABLE expert.sub_specialties
+CREATE TABLE IF NOT EXISTS expert.sub_specialties
 (
     sub_specialty_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -337,7 +334,7 @@ IS 'Additional specialist disciplines';
 -- EXPERT AVAILABILITY
 -- =============================================================================
 
-CREATE TABLE expert.expert_availability
+CREATE TABLE IF NOT EXISTS expert.expert_availability
 (
     availability_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -381,14 +378,14 @@ CREATE TABLE expert.expert_availability
 COMMENT ON TABLE expert.expert_availability
 IS 'Weekly availability schedule';
 
-CREATE INDEX idx_expert_availability_expert
+CREATE INDEX IF NOT EXISTS idx_expert_availability_expert
 ON expert.expert_availability(medical_expert_id);
 
 -- =============================================================================
 -- EXPERT LEAVE
 -- =============================================================================
 
-CREATE TABLE expert.expert_leave
+CREATE TABLE IF NOT EXISTS expert.expert_leave
 (
     leave_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -421,7 +418,7 @@ IS 'Expert leave calendar';
 -- APPOINTMENT CAPACITY
 -- =============================================================================
 
-CREATE TABLE expert.appointment_capacity
+CREATE TABLE IF NOT EXISTS expert.appointment_capacity
 (
     capacity_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -453,7 +450,7 @@ IS 'Appointment capacity limits';
 -- CONSULTATION FEES
 -- =============================================================================
 
-CREATE TABLE expert.consultation_fees
+CREATE TABLE IF NOT EXISTS expert.consultation_fees
 (
     consultation_fee_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -489,14 +486,14 @@ CREATE TABLE expert.consultation_fees
 COMMENT ON TABLE expert.consultation_fees
 IS 'Expert consultation tariffs';
 
-CREATE INDEX idx_consultation_fees_expert
+CREATE INDEX IF NOT EXISTS idx_consultation_fees_expert
 ON expert.consultation_fees(medical_expert_id);
 
 -- =============================================================================
 -- TRAVEL FEES
 -- =============================================================================
 
-CREATE TABLE expert.travel_fees
+CREATE TABLE IF NOT EXISTS expert.travel_fees
 (
     travel_fee_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -523,7 +520,7 @@ IS 'Travel fee schedule';
 -- EXPERT BANK ACCOUNTS
 -- =============================================================================
 
-CREATE TABLE expert.bank_accounts
+CREATE TABLE IF NOT EXISTS expert.bank_accounts
 (
     bank_account_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -560,7 +557,7 @@ IS 'Expert banking details';
 -- BILLING PROFILE
 -- =============================================================================
 
-CREATE TABLE expert.billing_profiles
+CREATE TABLE IF NOT EXISTS expert.billing_profiles
 (
     billing_profile_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -592,7 +589,7 @@ IS 'Expert billing configuration';
 -- DIGITAL SIGNATURES
 -- =============================================================================
 
-CREATE TABLE expert.digital_signatures
+CREATE TABLE IF NOT EXISTS expert.digital_signatures
 (
     digital_signature_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -624,7 +621,7 @@ IS 'Digital report signatures';
 -- PROFESSIONAL INDEMNITY
 -- =============================================================================
 
-CREATE TABLE expert.professional_indemnity
+CREATE TABLE IF NOT EXISTS expert.professional_indemnity
 (
     indemnity_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -653,7 +650,7 @@ IS 'Professional indemnity insurance';
 -- EXPERT DOCUMENTS
 -- =============================================================================
 
-CREATE TABLE expert.documents
+CREATE TABLE IF NOT EXISTS expert.documents
 (
     expert_document_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -686,7 +683,7 @@ IS 'Expert supporting documents';
 -- EXPERT PERFORMANCE METRICS
 -- =============================================================================
 
-CREATE TABLE expert.performance_metrics
+CREATE TABLE IF NOT EXISTS expert.performance_metrics
 (
     performance_metric_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -737,14 +734,14 @@ CREATE TABLE expert.performance_metrics
 COMMENT ON TABLE expert.performance_metrics
 IS 'Monthly expert performance KPIs';
 
-CREATE INDEX idx_expert_performance_metrics
+CREATE INDEX IF NOT EXISTS idx_expert_performance_metrics
 ON expert.performance_metrics(medical_expert_id);
 
 -- =============================================================================
 -- REPORT TURNAROUND HISTORY
 -- =============================================================================
 
-CREATE TABLE expert.report_turnaround_history
+CREATE TABLE IF NOT EXISTS expert.report_turnaround_history
 (
     turnaround_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -775,7 +772,7 @@ IS 'Historical report turnaround analytics';
 -- APPOINTMENT HISTORY
 -- =============================================================================
 
-CREATE TABLE expert.appointment_history
+CREATE TABLE IF NOT EXISTS expert.appointment_history
 (
     appointment_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -806,7 +803,7 @@ IS 'Historical appointment register';
 -- COMMUNICATION HISTORY
 -- =============================================================================
 
-CREATE TABLE expert.communication_history
+CREATE TABLE IF NOT EXISTS expert.communication_history
 (
     communication_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -837,7 +834,7 @@ IS 'Expert communications';
 -- INTERNAL NOTES
 -- =============================================================================
 
-CREATE TABLE expert.internal_notes
+CREATE TABLE IF NOT EXISTS expert.internal_notes
 (
     internal_note_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -863,7 +860,7 @@ IS 'Internal expert notes';
 -- EXPERT RATINGS
 -- =============================================================================
 
-CREATE TABLE expert.ratings
+CREATE TABLE IF NOT EXISTS expert.ratings
 (
     expert_rating_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -898,7 +895,7 @@ IS 'Expert performance ratings';
 -- EXPERT PORTAL ACCOUNTS
 -- =============================================================================
 
-CREATE TABLE expert.portal_accounts
+CREATE TABLE IF NOT EXISTS expert.portal_accounts
 (
     portal_account_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -929,7 +926,7 @@ IS 'Medical expert portal accounts';
 -- DOCUMENT SHARING
 -- =============================================================================
 
-CREATE TABLE expert.document_sharing
+CREATE TABLE IF NOT EXISTS expert.document_sharing
 (
     document_share_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -960,7 +957,7 @@ IS 'Secure document sharing';
 -- REFERRAL HISTORY
 -- =============================================================================
 
-CREATE TABLE expert.referral_history
+CREATE TABLE IF NOT EXISTS expert.referral_history
 (
     referral_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -992,31 +989,27 @@ IS 'Expert referral history';
 -- ENTERPRISE EXPERT DIRECTORY
 -- =============================================================================
 
-CREATE VIEW expert.v_medical_expert_directory
+CREATE OR REPLACE VIEW expert.v_medical_expert_directory
 AS
 SELECT
-
-e.medical_expert_id,
-e.expert_number,
-e.title,
-e.first_name,
-e.last_name,
-e.email,
-e.mobile_number,
-e.medical_specialty,
-e.expert_status,
-e.accepts_new_cases,
-p.practice_name,
-l.city,
-l.province
-
+    e.medical_expert_id,
+    e.expert_number,
+    e.title,
+    e.first_name,
+    e.last_name,
+    e.email,
+    e.mobile_number,
+    e.medical_specialty,
+    e.expert_status,
+    e.accepts_new_cases,
+    p.practice_name,
+    l.city,
+    l.province
 FROM expert.medical_experts e
-
 LEFT JOIN expert.practices p
-ON p.medical_expert_id = e.medical_expert_id
-
+    ON p.medical_expert_id = e.medical_expert_id
 LEFT JOIN expert.practice_locations l
-ON l.practice_id = p.practice_id;
+    ON l.practice_id = p.practice_id;
 
 COMMENT ON VIEW expert.v_medical_expert_directory
 IS 'Enterprise Medical Expert Directory';
@@ -1028,14 +1021,12 @@ IS 'Enterprise Medical Expert Directory';
 DO
 $$
 BEGIN
-
     RAISE NOTICE '';
     RAISE NOTICE '=====================================================';
     RAISE NOTICE 'Medical Expert Management Installed Successfully';
     RAISE NOTICE '006_experts.sql Completed';
     RAISE NOTICE '=====================================================';
     RAISE NOTICE '';
-
 END;
 $$;
 
