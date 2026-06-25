@@ -25,3 +25,7 @@ bootstrap:
     password: ${BOOTSTRAP_ADMIN_PASSWORD:}
     first-name: ${BOOTSTRAP_ADMIN_FIRST_NAME:}
     last-name: ${BOOTSTRAP_ADMIN_LAST_NAME:}
+app:
+  schema:
+    auto-run: ${APP_SCHEMA_AUTO_RUN:false}
+    path: ${APP_SCHEMA_PATH:/app/database}
