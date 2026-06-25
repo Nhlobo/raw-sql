@@ -8,16 +8,13 @@ FILE
 008_claimants.sql
 
 VERSION
-1.0 FINAL
+1.1 FIXED
 
 DESCRIPTION
 
 Enterprise Claimant Management System
 
-Every claimant is linked to a Master File and remains
-the central patient/person throughout the entire
-medico-legal process.
-
+This version is idempotent and safe to rerun.
 ===============================================================================
 */
 
@@ -27,7 +24,7 @@ BEGIN;
 -- CLAIMANTS
 -- =============================================================================
 
-CREATE TABLE claimant.claimants
+CREATE TABLE IF NOT EXISTS claimant.claimants
 (
     claimant_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -96,23 +93,23 @@ CREATE TABLE claimant.claimants
 COMMENT ON TABLE claimant.claimants
 IS 'Enterprise claimant register';
 
-CREATE INDEX idx_claimants_master
+CREATE INDEX IF NOT EXISTS idx_claimants_master
 ON claimant.claimants(master_file_id);
 
-CREATE INDEX idx_claimants_lastname
+CREATE INDEX IF NOT EXISTS idx_claimants_lastname
 ON claimant.claimants(last_name);
 
-CREATE INDEX idx_claimants_id
+CREATE INDEX IF NOT EXISTS idx_claimants_id
 ON claimant.claimants(south_african_id);
 
-CREATE INDEX idx_claimants_status
+CREATE INDEX IF NOT EXISTS idx_claimants_status
 ON claimant.claimants(claimant_status);
 
 -- =============================================================================
 -- CONTACT INFORMATION
 -- =============================================================================
 
-CREATE TABLE claimant.contact_information
+CREATE TABLE IF NOT EXISTS claimant.contact_information
 (
     contact_information_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -133,8 +130,7 @@ CREATE TABLE claimant.contact_information
 
     whatsapp_number VARCHAR(30),
 
-    preferred_contact_method notifications.notification_channel
-        DEFAULT 'phone',
+    preferred_contact_method notifications.notification_channel,
 
     emergency_contact_name VARCHAR(200),
 
@@ -158,7 +154,7 @@ IS 'Claimant contact information';
 -- ADDRESSES
 -- =============================================================================
 
-CREATE TABLE claimant.addresses
+CREATE TABLE IF NOT EXISTS claimant.addresses
 (
     claimant_address_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -202,7 +198,7 @@ IS 'Residential and postal addresses';
 -- EMPLOYMENT
 -- =============================================================================
 
-CREATE TABLE claimant.employment
+CREATE TABLE IF NOT EXISTS claimant.employment
 (
     employment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -243,7 +239,7 @@ IS 'Employment history';
 -- NEXT OF KIN
 -- =============================================================================
 
-CREATE TABLE claimant.next_of_kin
+CREATE TABLE IF NOT EXISTS claimant.next_of_kin
 (
     next_of_kin_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -278,7 +274,7 @@ IS 'Next of kin';
 -- DEPENDANTS
 -- =============================================================================
 
-CREATE TABLE claimant.dependants
+CREATE TABLE IF NOT EXISTS claimant.dependants
 (
     dependant_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -309,7 +305,7 @@ IS 'Claimant dependants';
 -- IDENTITY DOCUMENTS
 -- =============================================================================
 
-CREATE TABLE claimant.identity_documents
+CREATE TABLE IF NOT EXISTS claimant.identity_documents
 (
     identity_document_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -344,7 +340,7 @@ IS 'Identity verification documents';
 -- MEDICAL HISTORY
 -- =============================================================================
 
-CREATE TABLE claimant.medical_history
+CREATE TABLE IF NOT EXISTS claimant.medical_history
 (
     medical_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -391,14 +387,14 @@ CREATE TABLE claimant.medical_history
 COMMENT ON TABLE claimant.medical_history
 IS 'General medical profile';
 
-CREATE INDEX idx_medical_history_claimant
+CREATE INDEX IF NOT EXISTS idx_medical_history_claimant
 ON claimant.medical_history(claimant_id);
 
 -- =============================================================================
 -- CHRONIC CONDITIONS
 -- =============================================================================
 
-CREATE TABLE claimant.chronic_conditions
+CREATE TABLE IF NOT EXISTS claimant.chronic_conditions
 (
     chronic_condition_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -433,7 +429,7 @@ IS 'Chronic illnesses';
 -- ALLERGIES
 -- =============================================================================
 
-CREATE TABLE claimant.allergies
+CREATE TABLE IF NOT EXISTS claimant.allergies
 (
     allergy_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -465,7 +461,7 @@ IS 'Known allergies';
 -- CURRENT MEDICATION
 -- =============================================================================
 
-CREATE TABLE claimant.current_medication
+CREATE TABLE IF NOT EXISTS claimant.current_medication
 (
     medication_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -498,7 +494,7 @@ IS 'Current medication';
 -- SURGICAL HISTORY
 -- =============================================================================
 
-CREATE TABLE claimant.surgical_history
+CREATE TABLE IF NOT EXISTS claimant.surgical_history
 (
     surgery_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -527,7 +523,7 @@ IS 'Previous surgeries';
 -- PREVIOUS INJURIES
 -- =============================================================================
 
-CREATE TABLE claimant.previous_injuries
+CREATE TABLE IF NOT EXISTS claimant.previous_injuries
 (
     previous_injury_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -558,7 +554,7 @@ IS 'Historical injuries';
 -- DISABILITY INFORMATION
 -- =============================================================================
 
-CREATE TABLE claimant.disability_information
+CREATE TABLE IF NOT EXISTS claimant.disability_information
 (
     disability_information_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -587,7 +583,7 @@ IS 'Disability information';
 -- ACCIDENT DETAILS
 -- =============================================================================
 
-CREATE TABLE claimant.accident_details
+CREATE TABLE IF NOT EXISTS claimant.accident_details
 (
     accident_detail_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -630,14 +626,14 @@ CREATE TABLE claimant.accident_details
 COMMENT ON TABLE claimant.accident_details
 IS 'Accident details';
 
-CREATE INDEX idx_accident_master
+CREATE INDEX IF NOT EXISTS idx_accident_master
 ON claimant.accident_details(master_file_id);
 
 -- =============================================================================
 -- POLICE INFORMATION
 -- =============================================================================
 
-CREATE TABLE claimant.police_information
+CREATE TABLE IF NOT EXISTS claimant.police_information
 (
     police_information_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -668,7 +664,7 @@ IS 'Police case information';
 -- HOSPITAL ADMISSIONS
 -- =============================================================================
 
-CREATE TABLE claimant.hospital_admissions
+CREATE TABLE IF NOT EXISTS claimant.hospital_admissions
 (
     hospital_admission_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -699,7 +695,7 @@ IS 'Hospital admission history';
 -- RAF INFORMATION
 -- =============================================================================
 
-CREATE TABLE claimant.raf_information
+CREATE TABLE IF NOT EXISTS claimant.raf_information
 (
     raf_information_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -730,7 +726,7 @@ IS 'Road Accident Fund information';
 -- MEDICAL AID
 -- =============================================================================
 
-CREATE TABLE claimant.medical_aid
+CREATE TABLE IF NOT EXISTS claimant.medical_aid
 (
     medical_aid_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -758,7 +754,7 @@ IS 'Medical aid information';
 -- POPIA CONSENT
 -- =============================================================================
 
-CREATE TABLE claimant.popia_consent
+CREATE TABLE IF NOT EXISTS claimant.popia_consent
 (
     popia_consent_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -791,7 +787,7 @@ IS 'Claimant POPIA consent history';
 -- CLAIMANT BANKING DETAILS
 -- =============================================================================
 
-CREATE TABLE claimant.banking_details
+CREATE TABLE IF NOT EXISTS claimant.banking_details
 (
     banking_detail_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -833,7 +829,7 @@ IS 'Encrypted claimant banking information';
 -- APPOINTMENT HISTORY
 -- =============================================================================
 
-CREATE TABLE claimant.appointment_history
+CREATE TABLE IF NOT EXISTS claimant.appointment_history
 (
     appointment_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -863,14 +859,14 @@ CREATE TABLE claimant.appointment_history
 COMMENT ON TABLE claimant.appointment_history
 IS 'Historical appointment register';
 
-CREATE INDEX idx_claimant_appointment_history
+CREATE INDEX IF NOT EXISTS idx_claimant_appointment_history
 ON claimant.appointment_history(claimant_id);
 
 -- =============================================================================
 -- ASSESSMENT HISTORY
 -- =============================================================================
 
-CREATE TABLE claimant.assessment_history
+CREATE TABLE IF NOT EXISTS claimant.assessment_history
 (
     assessment_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -907,7 +903,7 @@ IS 'Assessment history';
 -- COMMUNICATION HISTORY
 -- =============================================================================
 
-CREATE TABLE claimant.communication_history
+CREATE TABLE IF NOT EXISTS claimant.communication_history
 (
     communication_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -939,7 +935,7 @@ IS 'Communication history';
 -- CLAIMANT DOCUMENT REGISTER
 -- =============================================================================
 
-CREATE TABLE claimant.documents
+CREATE TABLE IF NOT EXISTS claimant.documents
 (
     claimant_document_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -972,14 +968,14 @@ CREATE TABLE claimant.documents
 COMMENT ON TABLE claimant.documents
 IS 'Claimant document repository';
 
-CREATE INDEX idx_claimant_documents
+CREATE INDEX IF NOT EXISTS idx_claimant_documents
 ON claimant.documents(claimant_id);
 
 -- =============================================================================
 -- CLAIMANT PORTAL ACCOUNTS
 -- =============================================================================
 
-CREATE TABLE claimant.portal_accounts
+CREATE TABLE IF NOT EXISTS claimant.portal_accounts
 (
     portal_account_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1016,7 +1012,7 @@ IS 'Claimant portal accounts';
 -- DOCUMENT SHARING
 -- =============================================================================
 
-CREATE TABLE claimant.document_sharing
+CREATE TABLE IF NOT EXISTS claimant.document_sharing
 (
     document_share_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1050,7 +1046,7 @@ IS 'Secure claimant document sharing';
 -- INTERNAL NOTES
 -- =============================================================================
 
-CREATE TABLE claimant.internal_notes
+CREATE TABLE IF NOT EXISTS claimant.internal_notes
 (
     internal_note_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1080,7 +1076,7 @@ IS 'Internal claimant notes';
 -- CLAIMANT TIMELINE
 -- =============================================================================
 
-CREATE TABLE claimant.timeline
+CREATE TABLE IF NOT EXISTS claimant.timeline
 (
     timeline_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1112,7 +1108,7 @@ IS 'Claimant activity timeline';
 -- CLAIMANT DASHBOARD SUMMARY
 -- =============================================================================
 
-CREATE TABLE claimant.dashboard_summary
+CREATE TABLE IF NOT EXISTS claimant.dashboard_summary
 (
     dashboard_summary_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1152,42 +1148,30 @@ IS 'Claimant dashboard statistics';
 -- ENTERPRISE CLAIMANT DIRECTORY
 -- =============================================================================
 
-CREATE VIEW claimant.v_claimant_directory
+CREATE OR REPLACE VIEW claimant.v_claimant_directory
 AS
 SELECT
-
-c.claimant_id,
-c.claimant_number,
-c.first_name,
-c.last_name,
-c.gender,
-c.date_of_birth,
-c.claimant_status,
-
-mf.master_file_number,
-
-mf.workflow_status,
-
-ci.mobile_number,
-
-ci.email,
-
-ds.appointments_total,
-
-ds.assessments_completed,
-
-ds.documents_uploaded
-
+    c.claimant_id,
+    c.claimant_number,
+    c.first_name,
+    c.last_name,
+    c.gender,
+    c.date_of_birth,
+    c.claimant_status,
+    mf.master_file_number,
+    mf.workflow_status,
+    ci.mobile_number,
+    ci.email,
+    ds.appointments_total,
+    ds.assessments_completed,
+    ds.documents_uploaded
 FROM claimant.claimants c
-
 LEFT JOIN master.master_files mf
-ON mf.master_file_id = c.master_file_id
-
+    ON mf.master_file_id = c.master_file_id
 LEFT JOIN claimant.contact_information ci
-ON ci.claimant_id = c.claimant_id
-
+    ON ci.claimant_id = c.claimant_id
 LEFT JOIN claimant.dashboard_summary ds
-ON ds.claimant_id = c.claimant_id;
+    ON ds.claimant_id = c.claimant_id;
 
 COMMENT ON VIEW claimant.v_claimant_directory
 IS 'Enterprise claimant directory';
@@ -1199,14 +1183,12 @@ IS 'Enterprise claimant directory';
 DO
 $$
 BEGIN
-
     RAISE NOTICE '';
     RAISE NOTICE '=======================================================';
     RAISE NOTICE 'Claimant Management Installed Successfully';
     RAISE NOTICE '008_claimants.sql Completed';
     RAISE NOTICE '=======================================================';
     RAISE NOTICE '';
-
 END;
 $$;
 
