@@ -8,17 +8,13 @@ FILE
 007_master_files.sql
 
 VERSION
-1.0 FINAL
+1.1 FIXED
 
 DESCRIPTION
 
 MASTER FILE ENGINE
 
-This is the operational heart of the entire Kutlwano platform.
-
-Every claimant, attorney, assessment, report, finance transaction,
-appointment, document and dashboard ultimately belongs to a Master File.
-
+This version is idempotent and safe to rerun.
 ===============================================================================
 */
 
@@ -28,7 +24,7 @@ BEGIN;
 -- MASTER FILE REGISTER
 -- =============================================================================
 
-CREATE TABLE master.master_files
+CREATE TABLE IF NOT EXISTS master.master_files
 (
     master_file_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -101,29 +97,29 @@ CREATE TABLE master.master_files
 COMMENT ON TABLE master.master_files
 IS 'Enterprise master file register';
 
-CREATE INDEX idx_master_number
+CREATE INDEX IF NOT EXISTS idx_master_number
 ON master.master_files(master_file_number);
 
-CREATE INDEX idx_master_status
+CREATE INDEX IF NOT EXISTS idx_master_status
 ON master.master_files(workflow_status);
 
-CREATE INDEX idx_master_priority
+CREATE INDEX IF NOT EXISTS idx_master_priority
 ON master.master_files(case_priority);
 
-CREATE INDEX idx_master_attorney
+CREATE INDEX IF NOT EXISTS idx_master_attorney
 ON master.master_files(attorney_id);
 
-CREATE INDEX idx_master_claimant
+CREATE INDEX IF NOT EXISTS idx_master_claimant
 ON master.master_files(claimant_id);
 
-CREATE INDEX idx_master_received
+CREATE INDEX IF NOT EXISTS idx_master_received
 ON master.master_files(date_received);
 
 -- =============================================================================
 -- MASTER FILE CLASSIFICATION
 -- =============================================================================
 
-CREATE TABLE master.master_file_classification
+CREATE TABLE IF NOT EXISTS master.master_file_classification
 (
     classification_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -165,7 +161,7 @@ IS 'Legal classification';
 -- MASTER FILE OWNERSHIP
 -- =============================================================================
 
-CREATE TABLE master.master_file_ownership
+CREATE TABLE IF NOT EXISTS master.master_file_ownership
 (
     ownership_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -193,14 +189,14 @@ CREATE TABLE master.master_file_ownership
 COMMENT ON TABLE master.master_file_ownership
 IS 'Current ownership';
 
-CREATE INDEX idx_master_owner
+CREATE INDEX IF NOT EXISTS idx_master_owner
 ON master.master_file_ownership(owner_user_id);
 
 -- =============================================================================
 -- MASTER FILE STATUS HISTORY
 -- =============================================================================
 
-CREATE TABLE master.master_file_status_history
+CREATE TABLE IF NOT EXISTS master.master_file_status_history
 (
     status_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -228,7 +224,7 @@ IS 'Workflow history';
 -- MASTER FILE TIMELINE
 -- =============================================================================
 
-CREATE TABLE master.master_file_timeline
+CREATE TABLE IF NOT EXISTS master.master_file_timeline
 (
     timeline_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -256,14 +252,14 @@ CREATE TABLE master.master_file_timeline
 COMMENT ON TABLE master.master_file_timeline
 IS 'Enterprise timeline';
 
-CREATE INDEX idx_master_timeline
+CREATE INDEX IF NOT EXISTS idx_master_timeline
 ON master.master_file_timeline(master_file_id);
 
 -- =============================================================================
 -- MASTER FILE TAGS
 -- =============================================================================
 
-CREATE TABLE master.master_file_tags
+CREATE TABLE IF NOT EXISTS master.master_file_tags
 (
     tag_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -286,7 +282,7 @@ IS 'Reusable tags';
 -- MASTER FILE TAG ASSIGNMENT
 -- =============================================================================
 
-CREATE TABLE master.master_file_tag_assignment
+CREATE TABLE IF NOT EXISTS master.master_file_tag_assignment
 (
     assignment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -314,7 +310,7 @@ IS 'Master file tag mapping';
 -- MASTER FILE NOTES
 -- =============================================================================
 
-CREATE TABLE master.master_file_notes
+CREATE TABLE IF NOT EXISTS master.master_file_notes
 (
     note_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -342,14 +338,14 @@ CREATE TABLE master.master_file_notes
 COMMENT ON TABLE master.master_file_notes
 IS 'Internal case notes';
 
-CREATE INDEX idx_master_notes
+CREATE INDEX IF NOT EXISTS idx_master_notes
 ON master.master_file_notes(master_file_id);
 
 -- =============================================================================
 -- CASE WORKFLOW STAGES
 -- =============================================================================
 
-CREATE TABLE master.workflow_stages
+CREATE TABLE IF NOT EXISTS master.workflow_stages
 (
     workflow_stage_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -385,14 +381,14 @@ CREATE TABLE master.workflow_stages
 COMMENT ON TABLE master.workflow_stages
 IS 'Enterprise workflow stages';
 
-CREATE INDEX idx_workflow_stage_order
+CREATE INDEX IF NOT EXISTS idx_workflow_stage_order
 ON master.workflow_stages(stage_order);
 
 -- =============================================================================
 -- MASTER FILE CURRENT STAGE
 -- =============================================================================
 
-CREATE TABLE master.master_file_current_stage
+CREATE TABLE IF NOT EXISTS master.master_file_current_stage
 (
     current_stage_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -427,7 +423,7 @@ IS 'Current workflow stage';
 -- CASE MILESTONES
 -- =============================================================================
 
-CREATE TABLE master.case_milestones
+CREATE TABLE IF NOT EXISTS master.case_milestones
 (
     milestone_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -460,14 +456,14 @@ CREATE TABLE master.case_milestones
 COMMENT ON TABLE master.case_milestones
 IS 'Case milestones';
 
-CREATE INDEX idx_case_milestones_master
+CREATE INDEX IF NOT EXISTS idx_case_milestones_master
 ON master.case_milestones(master_file_id);
 
 -- =============================================================================
 -- WORKFLOW TASKS
 -- =============================================================================
 
-CREATE TABLE master.workflow_tasks
+CREATE TABLE IF NOT EXISTS master.workflow_tasks
 (
     workflow_task_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -512,17 +508,17 @@ CREATE TABLE master.workflow_tasks
 COMMENT ON TABLE master.workflow_tasks
 IS 'Workflow task engine';
 
-CREATE INDEX idx_workflow_tasks_master
+CREATE INDEX IF NOT EXISTS idx_workflow_tasks_master
 ON master.workflow_tasks(master_file_id);
 
-CREATE INDEX idx_workflow_tasks_user
+CREATE INDEX IF NOT EXISTS idx_workflow_tasks_user
 ON master.workflow_tasks(assigned_user_id);
 
 -- =============================================================================
 -- TASK DEPENDENCIES
 -- =============================================================================
 
-CREATE TABLE master.workflow_task_dependencies
+CREATE TABLE IF NOT EXISTS master.workflow_task_dependencies
 (
     dependency_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -548,7 +544,7 @@ IS 'Task dependency graph';
 -- CASE CHECKLISTS
 -- =============================================================================
 
-CREATE TABLE master.case_checklists
+CREATE TABLE IF NOT EXISTS master.case_checklists
 (
     checklist_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -574,7 +570,7 @@ IS 'Workflow checklists';
 -- CHECKLIST ITEMS
 -- =============================================================================
 
-CREATE TABLE master.case_checklist_items
+CREATE TABLE IF NOT EXISTS master.case_checklist_items
 (
     checklist_item_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -606,7 +602,7 @@ IS 'Checklist items';
 -- SLA TRACKING
 -- =============================================================================
 
-CREATE TABLE master.case_sla_tracking
+CREATE TABLE IF NOT EXISTS master.case_sla_tracking
 (
     sla_tracking_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -637,14 +633,14 @@ CREATE TABLE master.case_sla_tracking
 COMMENT ON TABLE master.case_sla_tracking
 IS 'SLA monitoring';
 
-CREATE INDEX idx_case_sla_master
+CREATE INDEX IF NOT EXISTS idx_case_sla_master
 ON master.case_sla_tracking(master_file_id);
 
 -- =============================================================================
 -- ESCALATIONS
 -- =============================================================================
 
-CREATE TABLE master.case_escalations
+CREATE TABLE IF NOT EXISTS master.case_escalations
 (
     escalation_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -676,7 +672,7 @@ IS 'Case escalations';
 -- CASE ALERTS
 -- =============================================================================
 
-CREATE TABLE master.case_alerts
+CREATE TABLE IF NOT EXISTS master.case_alerts
 (
     alert_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -706,7 +702,7 @@ IS 'Workflow alerts';
 -- CASE TRANSFER HISTORY
 -- =============================================================================
 
-CREATE TABLE master.case_transfer_history
+CREATE TABLE IF NOT EXISTS master.case_transfer_history
 (
     transfer_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -736,7 +732,7 @@ IS 'Ownership transfer history';
 -- CASE LOCKS
 -- =============================================================================
 
-CREATE TABLE master.case_locks
+CREATE TABLE IF NOT EXISTS master.case_locks
 (
     case_lock_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -762,7 +758,7 @@ IS 'Temporary case editing locks';
 -- CASE PARTICIPANTS
 -- =============================================================================
 
-CREATE TABLE master.case_participants
+CREATE TABLE IF NOT EXISTS master.case_participants
 (
     participant_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -799,17 +795,17 @@ CREATE TABLE master.case_participants
 COMMENT ON TABLE master.case_participants
 IS 'Every person or organisation linked to a Master File';
 
-CREATE INDEX idx_case_participants_master
+CREATE INDEX IF NOT EXISTS idx_case_participants_master
 ON master.case_participants(master_file_id);
 
-CREATE INDEX idx_case_participants_reference
+CREATE INDEX IF NOT EXISTS idx_case_participants_reference
 ON master.case_participants(reference_id);
 
 -- =============================================================================
 -- ATTORNEY ASSIGNMENT HISTORY
 -- =============================================================================
 
-CREATE TABLE master.attorney_assignment_history
+CREATE TABLE IF NOT EXISTS master.attorney_assignment_history
 (
     assignment_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -841,7 +837,7 @@ IS 'Historical attorney allocations';
 -- EXPERT ASSIGNMENT HISTORY
 -- =============================================================================
 
-CREATE TABLE master.expert_assignment_history
+CREATE TABLE IF NOT EXISTS master.expert_assignment_history
 (
     expert_assignment_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -872,14 +868,14 @@ CREATE TABLE master.expert_assignment_history
 COMMENT ON TABLE master.expert_assignment_history
 IS 'Medical expert allocation history';
 
-CREATE INDEX idx_master_expert_history
+CREATE INDEX IF NOT EXISTS idx_master_expert_history
 ON master.expert_assignment_history(master_file_id);
 
 -- =============================================================================
 -- MASTER FILE APPOINTMENT SUMMARY
 -- =============================================================================
 
-CREATE TABLE master.master_file_appointment_summary
+CREATE TABLE IF NOT EXISTS master.master_file_appointment_summary
 (
     summary_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -918,7 +914,7 @@ IS 'Appointment statistics';
 -- MASTER FILE ASSESSMENT SUMMARY
 -- =============================================================================
 
-CREATE TABLE master.master_file_assessment_summary
+CREATE TABLE IF NOT EXISTS master.master_file_assessment_summary
 (
     assessment_summary_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -953,7 +949,7 @@ IS 'Assessment statistics';
 -- MASTER FILE DOCUMENT SUMMARY
 -- =============================================================================
 
-CREATE TABLE master.master_file_document_summary
+CREATE TABLE IF NOT EXISTS master.master_file_document_summary
 (
     document_summary_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -990,7 +986,7 @@ IS 'Document statistics';
 -- MASTER FILE FINANCIAL SUMMARY
 -- =============================================================================
 
-CREATE TABLE master.master_file_financial_summary
+CREATE TABLE IF NOT EXISTS master.master_file_financial_summary
 (
     financial_summary_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1028,7 +1024,7 @@ IS 'Financial dashboard values';
 -- MASTER FILE AUDIT SUMMARY
 -- =============================================================================
 
-CREATE TABLE master.master_file_audit_summary
+CREATE TABLE IF NOT EXISTS master.master_file_audit_summary
 (
     audit_summary_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1062,53 +1058,38 @@ IS 'Operational audit summary';
 -- ENTERPRISE MASTER FILE VIEW
 -- =============================================================================
 
-CREATE VIEW master.v_master_file_overview
+CREATE OR REPLACE VIEW master.v_master_file_overview
 AS
 SELECT
-
-mf.master_file_id,
-mf.master_file_number,
-mf.case_type,
-mf.case_category,
-mf.workflow_status,
-mf.case_priority,
-mf.risk_level,
-mf.date_received,
-mf.expected_completion,
-
-af.registered_name,
-
-a.first_name || ' ' || a.last_name AS attorney_name,
-
-c.total_appointments,
-
-s.total_assessments,
-
-f.total_invoiced,
-
-f.outstanding_balance,
-
-d.total_documents
-
+    mf.master_file_id,
+    mf.master_file_number,
+    mf.case_type,
+    mf.case_category,
+    mf.workflow_status,
+    mf.case_priority,
+    mf.risk_level,
+    mf.date_received,
+    mf.expected_completion,
+    af.registered_name,
+    a.first_name || ' ' || a.last_name AS attorney_name,
+    c.total_appointments,
+    s.total_assessments,
+    f.total_invoiced,
+    f.outstanding_balance,
+    d.total_documents
 FROM master.master_files mf
-
 LEFT JOIN attorney.attorney_firms af
-ON af.attorney_firm_id = mf.attorney_firm_id
-
+    ON af.attorney_firm_id = mf.attorney_firm_id
 LEFT JOIN attorney.attorneys a
-ON a.attorney_id = mf.attorney_id
-
+    ON a.attorney_id = mf.attorney_id
 LEFT JOIN master.master_file_appointment_summary c
-ON c.master_file_id = mf.master_file_id
-
+    ON c.master_file_id = mf.master_file_id
 LEFT JOIN master.master_file_assessment_summary s
-ON s.master_file_id = mf.master_file_id
-
+    ON s.master_file_id = mf.master_file_id
 LEFT JOIN master.master_file_financial_summary f
-ON f.master_file_id = mf.master_file_id
-
+    ON f.master_file_id = mf.master_file_id
 LEFT JOIN master.master_file_document_summary d
-ON d.master_file_id = mf.master_file_id;
+    ON d.master_file_id = mf.master_file_id;
 
 COMMENT ON VIEW master.v_master_file_overview
 IS 'Enterprise operational Master File dashboard';
@@ -1120,14 +1101,12 @@ IS 'Enterprise operational Master File dashboard';
 DO
 $$
 BEGIN
-
     RAISE NOTICE '';
     RAISE NOTICE '======================================================';
     RAISE NOTICE 'Master File Engine Installed Successfully';
     RAISE NOTICE '007_master_files.sql Completed';
     RAISE NOTICE '======================================================';
     RAISE NOTICE '';
-
 END;
 $$;
 
