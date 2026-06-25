@@ -1,130 +1,69 @@
 package com.kutlwano.auth.bootstrap;
 
-import com.kutlwano.auth.config.BootstrapProperties;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.util.UUID;
+import javax.sql.DataSource;
+import java.io.File;
+import java.util.Arrays;
+import java.util.Comparator;
+
+import org.springframework.core.io.FileSystemResource;
 
 @Component
-public class SuperAdminBootstrap implements CommandLineRunner {
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class SchemaMigrationRunner implements CommandLineRunner {
 
-    private final BootstrapProperties properties;
-    private final JdbcTemplate jdbcTemplate;
-    private final PasswordEncoder passwordEncoder;
+    private final DataSource dataSource;
 
-    public SuperAdminBootstrap(BootstrapProperties properties,
-                               JdbcTemplate jdbcTemplate,
-                               PasswordEncoder passwordEncoder) {
-        this.properties = properties;
-        this.jdbcTemplate = jdbcTemplate;
-        this.passwordEncoder = passwordEncoder;
+    @Value("${app.schema.auto-run:false}")
+    private boolean autoRun;
+
+    @Value("${app.schema.path:/app/database}")
+    private String schemaPath;
+
+    public SchemaMigrationRunner(DataSource dataSource) {
+        this.dataSource = dataSource;
     }
 
     @Override
-    public void run(String... args) {
-        if (!properties.isEnabled()) {
+    public void run(String... args) throws Exception {
+        if (!autoRun) {
+            System.out.println("SchemaMigrationRunner skipped: app.schema.auto-run=false");
             return;
         }
 
-        validate();
-
-        Integer existing = jdbcTemplate.queryForObject("""
-            SELECT COUNT(*)
-            FROM security.users
-            WHERE email = ?
-               OR username = ?
-               OR primary_role = 'super_admin'
-            """, Integer.class,
-            properties.getEmail().trim().toLowerCase(),
-            properties.getUsername().trim().toLowerCase()
-        );
-
-        if (existing != null && existing > 0) {
-            System.out.println("Bootstrap skipped: super admin already exists.");
-            return;
+        File folder = new File(schemaPath);
+        if (!folder.exists() || !folder.isDirectory()) {
+            throw new IllegalStateException("Schema path not found: " + schemaPath);
         }
 
-        UUID userId = UUID.randomUUID();
-        UUID profileId = UUID.randomUUID();
-
-        String passwordHash = passwordEncoder.encode(properties.getPassword());
-
-        jdbcTemplate.update("""
-            INSERT INTO security.users
-            (
-                user_id,
-                username,
-                email,
-                password_hash,
-                account_status,
-                user_type,
-                primary_role,
-                mfa_status,
-                password_status,
-                failed_login_count,
-                must_change_password,
-                security_stamp,
-                concurrency_stamp
-            )
-            VALUES
-            (
-                ?,
-                ?,
-                ?,
-                ?,
-                'active',
-                'internal',
-                'super_admin',
-                'not_enabled',
-                'valid',
-                0,
-                FALSE,
-                gen_random_uuid(),
-                gen_random_uuid()
-            )
-            """,
-            userId,
-            properties.getUsername().trim().toLowerCase(),
-            properties.getEmail().trim().toLowerCase(),
-            passwordHash
-        );
-
-        jdbcTemplate.update("""
-            INSERT INTO security.user_profiles
-            (
-                profile_id,
-                user_id,
-                first_name,
-                last_name
-            )
-            VALUES
-            (
-                ?,
-                ?,
-                ?,
-                ?
-            )
-            """,
-            profileId,
-            userId,
-            properties.getFirstName().trim(),
-            properties.getLastName().trim()
-        );
-
-        System.out.println("Bootstrap success: super admin created -> " + properties.getEmail());
-    }
-
-    private void validate() {
-        if (!StringUtils.hasText(properties.getUsername())
-            || !StringUtils.hasText(properties.getEmail())
-            || !StringUtils.hasText(properties.getPassword())
-            || !StringUtils.hasText(properties.getFirstName())
-            || !StringUtils.hasText(properties.getLastName())) {
-            throw new IllegalStateException("Set all bootstrap.admin.* values before enabling bootstrap");
+        File[] sqlFiles = folder.listFiles((dir, name) -> name.toLowerCase().endsWith(".sql"));
+        if (sqlFiles == null || sqlFiles.length == 0) {
+            throw new IllegalStateException("No SQL files found in: " + schemaPath);
         }
+
+        Arrays.sort(sqlFiles, Comparator.comparing(File::getName));
+
+        ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
+        populator.setContinueOnError(false);
+        populator.setIgnoreFailedDrops(true);
+        populator.setSqlScriptEncoding("UTF-8");
+
+        for (File file : sqlFiles) {
+            if (StringUtils.hasText(file.getName())) {
+                System.out.println("Applying SQL file: " + file.getName());
+                populator.addScript(new FileSystemResource(file));
+            }
+        }
+
+        populator.execute(dataSource);
+
+        System.out.println("SchemaMigrationRunner completed successfully.");
     }
 }
