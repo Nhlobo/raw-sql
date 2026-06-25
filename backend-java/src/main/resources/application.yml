@@ -2,13 +2,6 @@ server:
   port: ${PORT:10000}
   address: 0.0.0.0
 
-spring:
-  datasource:
-    url: ${DATABASE_URL}
-    username: ${DATABASE_USERNAME}
-    password: ${DATABASE_PASSWORD}
-    driver-class-name: org.postgresql.Driver
-
 app:
   jwt:
     secret: ${JWT_SECRET}
@@ -16,6 +9,9 @@ app:
     access-token-minutes: 30
   cors:
     allowed-origin: ${FRONTEND_URL:http://localhost:5173}
+  schema:
+    auto-run: ${APP_SCHEMA_AUTO_RUN:false}
+    path: ${APP_SCHEMA_PATH:/app/database}
 
 bootstrap:
   admin:
@@ -25,7 +21,3 @@ bootstrap:
     password: ${BOOTSTRAP_ADMIN_PASSWORD:}
     first-name: ${BOOTSTRAP_ADMIN_FIRST_NAME:}
     last-name: ${BOOTSTRAP_ADMIN_LAST_NAME:}
-app:
-  schema:
-    auto-run: ${APP_SCHEMA_AUTO_RUN:false}
-    path: ${APP_SCHEMA_PATH:/app/database}
