@@ -8,18 +8,13 @@ FILE
 004_users.sql
 
 VERSION
-1.0 FINAL
+1.1 FIXED
 
 DESCRIPTION
 
 Enterprise User Management
 
-This module contains the complete identity management system used by every
-module within the enterprise platform.
-
-Every internal employee, attorney, doctor, expert and future portal user
-ultimately derives identity from this module.
-
+This version is idempotent and safe to rerun.
 ===============================================================================
 */
 
@@ -29,7 +24,7 @@ BEGIN;
 -- DEPARTMENTS
 -- =============================================================================
 
-CREATE TABLE core.departments
+CREATE TABLE IF NOT EXISTS core.departments
 (
     department_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -66,14 +61,14 @@ CREATE TABLE core.departments
 COMMENT ON TABLE core.departments
 IS 'Kutlwano business departments';
 
-CREATE INDEX idx_departments_name
+CREATE INDEX IF NOT EXISTS idx_departments_name
 ON core.departments(department_name);
 
 -- =============================================================================
 -- JOB POSITIONS
 -- =============================================================================
 
-CREATE TABLE core.job_positions
+CREATE TABLE IF NOT EXISTS core.job_positions
 (
     position_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -105,14 +100,14 @@ CREATE TABLE core.job_positions
 COMMENT ON TABLE core.job_positions
 IS 'Enterprise job positions';
 
-CREATE INDEX idx_positions_department
+CREATE INDEX IF NOT EXISTS idx_positions_department
 ON core.job_positions(department_id);
 
 -- =============================================================================
 -- USERS
 -- =============================================================================
 
-CREATE TABLE security.users
+CREATE TABLE IF NOT EXISTS security.users
 (
     user_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -176,23 +171,23 @@ CREATE TABLE security.users
 COMMENT ON TABLE security.users
 IS 'Enterprise user authentication accounts';
 
-CREATE INDEX idx_users_email
+CREATE INDEX IF NOT EXISTS idx_users_email
 ON security.users(email);
 
-CREATE INDEX idx_users_username
+CREATE INDEX IF NOT EXISTS idx_users_username
 ON security.users(username);
 
-CREATE INDEX idx_users_status
+CREATE INDEX IF NOT EXISTS idx_users_status
 ON security.users(account_status);
 
-CREATE INDEX idx_users_role
+CREATE INDEX IF NOT EXISTS idx_users_role
 ON security.users(primary_role);
 
 -- =============================================================================
 -- USER PROFILES
 -- =============================================================================
 
-CREATE TABLE security.user_profiles
+CREATE TABLE IF NOT EXISTS security.user_profiles
 (
     profile_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -242,17 +237,17 @@ CREATE TABLE security.user_profiles
 COMMENT ON TABLE security.user_profiles
 IS 'Enterprise user personal profiles';
 
-CREATE INDEX idx_profiles_lastname
+CREATE INDEX IF NOT EXISTS idx_profiles_lastname
 ON security.user_profiles(last_name);
 
-CREATE INDEX idx_profiles_firstname
+CREATE INDEX IF NOT EXISTS idx_profiles_firstname
 ON security.user_profiles(first_name);
 
 -- =============================================================================
 -- USER EMPLOYMENT
 -- =============================================================================
 
-CREATE TABLE security.user_employment
+CREATE TABLE IF NOT EXISTS security.user_employment
 (
     employment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -292,17 +287,17 @@ CREATE TABLE security.user_employment
 COMMENT ON TABLE security.user_employment
 IS 'Employee information';
 
-CREATE INDEX idx_employment_department
+CREATE INDEX IF NOT EXISTS idx_employment_department
 ON security.user_employment(department_id);
 
-CREATE INDEX idx_employment_manager
+CREATE INDEX IF NOT EXISTS idx_employment_manager
 ON security.user_employment(manager_user_id);
 
 -- =============================================================================
 -- USER ADDRESSES
 -- =============================================================================
 
-CREATE TABLE security.user_addresses
+CREATE TABLE IF NOT EXISTS security.user_addresses
 (
     address_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -350,17 +345,17 @@ CREATE TABLE security.user_addresses
 COMMENT ON TABLE security.user_addresses
 IS 'Residential and business addresses';
 
-CREATE INDEX idx_user_addresses_user
+CREATE INDEX IF NOT EXISTS idx_user_addresses_user
 ON security.user_addresses(user_id);
 
-CREATE INDEX idx_user_addresses_city
+CREATE INDEX IF NOT EXISTS idx_user_addresses_city
 ON security.user_addresses(city);
 
 -- =============================================================================
 -- USER CONTACT NUMBERS
 -- =============================================================================
 
-CREATE TABLE security.user_contact_numbers
+CREATE TABLE IF NOT EXISTS security.user_contact_numbers
 (
     contact_number_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -401,14 +396,14 @@ CREATE TABLE security.user_contact_numbers
 COMMENT ON TABLE security.user_contact_numbers
 IS 'User telephone numbers';
 
-CREATE INDEX idx_contact_numbers_user
+CREATE INDEX IF NOT EXISTS idx_contact_numbers_user
 ON security.user_contact_numbers(user_id);
 
 -- =============================================================================
 -- EMERGENCY CONTACTS
 -- =============================================================================
 
-CREATE TABLE security.user_emergency_contacts
+CREATE TABLE IF NOT EXISTS security.user_emergency_contacts
 (
     emergency_contact_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -442,14 +437,14 @@ CREATE TABLE security.user_emergency_contacts
 COMMENT ON TABLE security.user_emergency_contacts
 IS 'Employee emergency contacts';
 
-CREATE INDEX idx_emergency_contacts_user
+CREATE INDEX IF NOT EXISTS idx_emergency_contacts_user
 ON security.user_emergency_contacts(user_id);
 
 -- =============================================================================
 -- PROFESSIONAL QUALIFICATIONS
 -- =============================================================================
 
-CREATE TABLE security.user_qualifications
+CREATE TABLE IF NOT EXISTS security.user_qualifications
 (
     qualification_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -482,14 +477,14 @@ CREATE TABLE security.user_qualifications
 COMMENT ON TABLE security.user_qualifications
 IS 'Professional qualifications';
 
-CREATE INDEX idx_qualifications_user
+CREATE INDEX IF NOT EXISTS idx_qualifications_user
 ON security.user_qualifications(user_id);
 
 -- =============================================================================
 -- PROFESSIONAL REGISTRATIONS
 -- =============================================================================
 
-CREATE TABLE security.user_professional_registrations
+CREATE TABLE IF NOT EXISTS security.user_professional_registrations
 (
     registration_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -522,14 +517,14 @@ CREATE TABLE security.user_professional_registrations
 COMMENT ON TABLE security.user_professional_registrations
 IS 'Professional council registrations';
 
-CREATE INDEX idx_registrations_user
+CREATE INDEX IF NOT EXISTS idx_registrations_user
 ON security.user_professional_registrations(user_id);
 
 -- =============================================================================
 -- USER BANKING DETAILS
 -- =============================================================================
 
-CREATE TABLE security.user_bank_accounts
+CREATE TABLE IF NOT EXISTS security.user_bank_accounts
 (
     bank_account_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -563,14 +558,14 @@ CREATE TABLE security.user_bank_accounts
 COMMENT ON TABLE security.user_bank_accounts
 IS 'Encrypted banking information';
 
-CREATE INDEX idx_bank_accounts_user
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_user
 ON security.user_bank_accounts(user_id);
 
 -- =============================================================================
 -- POPIA CONSENT
 -- =============================================================================
 
-CREATE TABLE security.popia_consents
+CREATE TABLE IF NOT EXISTS security.popia_consents
 (
     consent_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -601,14 +596,14 @@ CREATE TABLE security.popia_consents
 COMMENT ON TABLE security.popia_consents
 IS 'Protection of Personal Information Act consent history';
 
-CREATE INDEX idx_popia_user
+CREATE INDEX IF NOT EXISTS idx_popia_user
 ON security.popia_consents(user_id);
 
 -- =============================================================================
 -- USER LANGUAGE SETTINGS
 -- =============================================================================
 
-CREATE TABLE security.user_language_settings
+CREATE TABLE IF NOT EXISTS security.user_language_settings
 (
     language_setting_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -646,7 +641,7 @@ IS 'Regional and language preferences';
 -- USER PREFERENCES
 -- =============================================================================
 
-CREATE TABLE security.user_preferences
+CREATE TABLE IF NOT EXISTS security.user_preferences
 (
     preference_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -693,7 +688,7 @@ IS 'Enterprise user preferences';
 -- NOTIFICATION PREFERENCES
 -- =============================================================================
 
-CREATE TABLE security.notification_preferences
+CREATE TABLE IF NOT EXISTS security.notification_preferences
 (
     notification_preference_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -732,14 +727,14 @@ CREATE TABLE security.notification_preferences
 COMMENT ON TABLE security.notification_preferences
 IS 'Notification delivery preferences';
 
-CREATE INDEX idx_notification_preferences_user
+CREATE INDEX IF NOT EXISTS idx_notification_preferences_user
 ON security.notification_preferences(user_id);
 
 -- =============================================================================
 -- DASHBOARD PREFERENCES
 -- =============================================================================
 
-CREATE TABLE dashboard.user_dashboard_preferences
+CREATE TABLE IF NOT EXISTS dashboard.user_dashboard_preferences
 (
     dashboard_preference_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -773,7 +768,7 @@ IS 'Personal dashboard configuration';
 -- DIGITAL SIGNATURES
 -- =============================================================================
 
-CREATE TABLE security.user_digital_signatures
+CREATE TABLE IF NOT EXISTS security.user_digital_signatures
 (
     signature_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -807,14 +802,14 @@ CREATE TABLE security.user_digital_signatures
 COMMENT ON TABLE security.user_digital_signatures
 IS 'Digital signatures for reports and approvals';
 
-CREATE INDEX idx_user_signatures_user
+CREATE INDEX IF NOT EXISTS idx_user_signatures_user
 ON security.user_digital_signatures(user_id);
 
 -- =============================================================================
 -- USER DOCUMENTS
 -- =============================================================================
 
-CREATE TABLE security.user_documents
+CREATE TABLE IF NOT EXISTS security.user_documents
 (
     user_document_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -846,14 +841,14 @@ CREATE TABLE security.user_documents
 COMMENT ON TABLE security.user_documents
 IS 'Employment and identity documents';
 
-CREATE INDEX idx_user_documents_user
+CREATE INDEX IF NOT EXISTS idx_user_documents_user
 ON security.user_documents(user_id);
 
 -- =============================================================================
 -- USER ACTIVITY SUMMARY
 -- =============================================================================
 
-CREATE TABLE security.user_activity_summary
+CREATE TABLE IF NOT EXISTS security.user_activity_summary
 (
     user_id UUID PRIMARY KEY
         REFERENCES security.users(user_id)
@@ -896,7 +891,7 @@ IS 'Aggregated operational statistics';
 -- DELEGATION
 -- =============================================================================
 
-CREATE TABLE security.user_delegations
+CREATE TABLE IF NOT EXISTS security.user_delegations
 (
     delegation_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -927,7 +922,7 @@ IS 'Temporary acting roles';
 -- USER AVAILABILITY
 -- =============================================================================
 
-CREATE TABLE security.user_availability
+CREATE TABLE IF NOT EXISTS security.user_availability
 (
     availability_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -954,41 +949,27 @@ IS 'Leave, travel and availability scheduling';
 -- ENTERPRISE USER DIRECTORY
 -- =============================================================================
 
-CREATE VIEW security.v_user_directory
+CREATE OR REPLACE VIEW security.v_user_directory
 AS
 SELECT
-
-u.user_id,
-
-u.username,
-
-u.email,
-
-u.primary_role,
-
-u.account_status,
-
-p.first_name,
-
-p.last_name,
-
-d.department_name,
-
-j.position_name
-
+    u.user_id,
+    u.username,
+    u.email,
+    u.primary_role,
+    u.account_status,
+    p.first_name,
+    p.last_name,
+    d.department_name,
+    j.position_name
 FROM security.users u
-
 LEFT JOIN security.user_profiles p
-ON p.user_id=u.user_id
-
+    ON p.user_id = u.user_id
 LEFT JOIN security.user_employment e
-ON e.user_id=u.user_id
-
+    ON e.user_id = u.user_id
 LEFT JOIN core.departments d
-ON d.department_id=e.department_id
-
+    ON d.department_id = e.department_id
 LEFT JOIN core.job_positions j
-ON j.position_id=e.position_id;
+    ON j.position_id = e.position_id;
 
 COMMENT ON VIEW security.v_user_directory
 IS 'Enterprise user directory';
@@ -1000,14 +981,12 @@ IS 'Enterprise user directory';
 DO
 $$
 BEGIN
-
     RAISE NOTICE '';
     RAISE NOTICE '===============================================';
     RAISE NOTICE 'Enterprise User Management Installed';
     RAISE NOTICE '004_users.sql Completed Successfully';
     RAISE NOTICE '===============================================';
     RAISE NOTICE '';
-
 END;
 $$;
 
