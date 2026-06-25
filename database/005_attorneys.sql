@@ -8,7 +8,7 @@ FILE
 005_attorneys.sql
 
 VERSION
-1.0 FINAL
+1.1 FIXED
 
 DESCRIPTION
 
@@ -18,6 +18,7 @@ Referral Management
 Business Development
 Attorney Portal Foundation
 
+This version is idempotent and safe to rerun.
 ===============================================================================
 */
 
@@ -27,7 +28,7 @@ BEGIN;
 -- ATTORNEY FIRMS
 -- =============================================================================
 
-CREATE TABLE attorney.attorney_firms
+CREATE TABLE IF NOT EXISTS attorney.attorney_firms
 (
     attorney_firm_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -91,20 +92,20 @@ CREATE TABLE attorney.attorney_firms
 COMMENT ON TABLE attorney.attorney_firms
 IS 'Registered law firms';
 
-CREATE INDEX idx_attorney_firm_name
+CREATE INDEX IF NOT EXISTS idx_attorney_firm_name
 ON attorney.attorney_firms(registered_name);
 
-CREATE INDEX idx_attorney_firm_status
+CREATE INDEX IF NOT EXISTS idx_attorney_firm_status
 ON attorney.attorney_firms(active);
 
-CREATE INDEX idx_attorney_firm_priority
+CREATE INDEX IF NOT EXISTS idx_attorney_firm_priority
 ON attorney.attorney_firms(priority_level);
 
 -- =============================================================================
 -- BRANCHES
 -- =============================================================================
 
-CREATE TABLE attorney.attorney_branches
+CREATE TABLE IF NOT EXISTS attorney.attorney_branches
 (
     attorney_branch_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -149,14 +150,14 @@ CREATE TABLE attorney.attorney_branches
 COMMENT ON TABLE attorney.attorney_branches
 IS 'Law firm branch offices';
 
-CREATE INDEX idx_attorney_branch_firm
+CREATE INDEX IF NOT EXISTS idx_attorney_branch_firm
 ON attorney.attorney_branches(attorney_firm_id);
 
 -- =============================================================================
 -- ATTORNEYS
 -- =============================================================================
 
-CREATE TABLE attorney.attorneys
+CREATE TABLE IF NOT EXISTS attorney.attorneys
 (
     attorney_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -217,20 +218,20 @@ CREATE TABLE attorney.attorneys
 COMMENT ON TABLE attorney.attorneys
 IS 'Individual attorneys';
 
-CREATE INDEX idx_attorneys_firm
+CREATE INDEX IF NOT EXISTS idx_attorneys_firm
 ON attorney.attorneys(attorney_firm_id);
 
-CREATE INDEX idx_attorneys_email
+CREATE INDEX IF NOT EXISTS idx_attorneys_email
 ON attorney.attorneys(email);
 
-CREATE INDEX idx_attorneys_lastname
+CREATE INDEX IF NOT EXISTS idx_attorneys_lastname
 ON attorney.attorneys(last_name);
 
 -- =============================================================================
 -- CANDIDATE ATTORNEYS
 -- =============================================================================
 
-CREATE TABLE attorney.candidate_attorneys
+CREATE TABLE IF NOT EXISTS attorney.candidate_attorneys
 (
     candidate_attorney_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -265,7 +266,7 @@ IS 'Candidate attorneys';
 -- LEGAL SECRETARIES
 -- =============================================================================
 
-CREATE TABLE attorney.legal_secretaries
+CREATE TABLE IF NOT EXISTS attorney.legal_secretaries
 (
     legal_secretary_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -298,7 +299,7 @@ IS 'Attorney secretaries';
 -- PRACTICE AREAS
 -- =============================================================================
 
-CREATE TABLE attorney.practice_areas
+CREATE TABLE IF NOT EXISTS attorney.practice_areas
 (
     practice_area_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -319,7 +320,7 @@ IS 'Legal practice specialisations';
 -- ATTORNEY PRACTICE AREAS
 -- =============================================================================
 
-CREATE TABLE attorney.attorney_practice_areas
+CREATE TABLE IF NOT EXISTS attorney.attorney_practice_areas
 (
     attorney_practice_area_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -342,7 +343,7 @@ IS 'Attorney legal specialisations';
 -- ATTORNEY CONTACT PERSONS
 -- =============================================================================
 
-CREATE TABLE attorney.attorney_contacts
+CREATE TABLE IF NOT EXISTS attorney.attorney_contacts
 (
     attorney_contact_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -396,14 +397,14 @@ CREATE TABLE attorney.attorney_contacts
 COMMENT ON TABLE attorney.attorney_contacts
 IS 'Law firm contact directory';
 
-CREATE INDEX idx_attorney_contacts_firm
+CREATE INDEX IF NOT EXISTS idx_attorney_contacts_firm
 ON attorney.attorney_contacts(attorney_firm_id);
 
 -- =============================================================================
 -- ATTORNEY BANKING DETAILS
 -- =============================================================================
 
-CREATE TABLE attorney.attorney_bank_accounts
+CREATE TABLE IF NOT EXISTS attorney.attorney_bank_accounts
 (
     attorney_bank_account_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -450,7 +451,7 @@ IS 'Attorney banking information';
 -- TRUST ACCOUNTS
 -- =============================================================================
 
-CREATE TABLE attorney.trust_accounts
+CREATE TABLE IF NOT EXISTS attorney.trust_accounts
 (
     trust_account_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -488,7 +489,7 @@ IS 'Attorney trust account registry';
 -- BILLING PROFILES
 -- =============================================================================
 
-CREATE TABLE attorney.billing_profiles
+CREATE TABLE IF NOT EXISTS attorney.billing_profiles
 (
     billing_profile_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -529,7 +530,7 @@ IS 'Attorney billing configuration';
 -- SERVICE LEVEL AGREEMENTS
 -- =============================================================================
 
-CREATE TABLE attorney.service_level_agreements
+CREATE TABLE IF NOT EXISTS attorney.service_level_agreements
 (
     sla_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -565,7 +566,7 @@ IS 'Attorney SLA management';
 -- REFERRAL AGREEMENTS
 -- =============================================================================
 
-CREATE TABLE attorney.referral_agreements
+CREATE TABLE IF NOT EXISTS attorney.referral_agreements
 (
     referral_agreement_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -597,7 +598,7 @@ IS 'Attorney referral agreements';
 -- RELATIONSHIP MANAGERS
 -- =============================================================================
 
-CREATE TABLE attorney.relationship_managers
+CREATE TABLE IF NOT EXISTS attorney.relationship_managers
 (
     relationship_manager_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -626,7 +627,7 @@ IS 'Internal business relationship ownership';
 -- ATTORNEY PERFORMANCE
 -- =============================================================================
 
-CREATE TABLE attorney.attorney_performance
+CREATE TABLE IF NOT EXISTS attorney.attorney_performance
 (
     performance_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -666,7 +667,7 @@ IS 'Monthly attorney KPIs';
 -- ATTORNEY INSURANCE
 -- =============================================================================
 
-CREATE TABLE attorney.professional_indemnity_insurance
+CREATE TABLE IF NOT EXISTS attorney.professional_indemnity_insurance
 (
     insurance_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -698,7 +699,7 @@ IS 'Professional indemnity insurance register';
 -- POPIA COMPLIANCE
 -- =============================================================================
 
-CREATE TABLE attorney.popia_compliance
+CREATE TABLE IF NOT EXISTS attorney.popia_compliance
 (
     compliance_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -728,7 +729,7 @@ IS 'Attorney POPIA compliance tracking';
 -- REFERRAL HISTORY
 -- =============================================================================
 
-CREATE TABLE attorney.referral_history
+CREATE TABLE IF NOT EXISTS attorney.referral_history
 (
     referral_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -764,17 +765,17 @@ CREATE TABLE attorney.referral_history
 COMMENT ON TABLE attorney.referral_history
 IS 'Complete referral history';
 
-CREATE INDEX idx_referral_history_firm
+CREATE INDEX IF NOT EXISTS idx_referral_history_firm
 ON attorney.referral_history(attorney_firm_id);
 
-CREATE INDEX idx_referral_history_master_file
+CREATE INDEX IF NOT EXISTS idx_referral_history_master_file
 ON attorney.referral_history(master_file_id);
 
 -- =============================================================================
 -- MASTER FILE ASSIGNMENTS
 -- =============================================================================
 
-CREATE TABLE attorney.master_file_assignments
+CREATE TABLE IF NOT EXISTS attorney.master_file_assignments
 (
     assignment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -794,8 +795,8 @@ CREATE TABLE attorney.master_file_assignments
 
     removed_date TIMESTAMPTZ,
 
-    assignment_status master.workflow_status
-        DEFAULT 'assigned',
+    assignment_status workflow.workflow_status
+        DEFAULT 'in_progress',
 
     notes TEXT
 );
@@ -803,17 +804,17 @@ CREATE TABLE attorney.master_file_assignments
 COMMENT ON TABLE attorney.master_file_assignments
 IS 'Attorney allocation history';
 
-CREATE INDEX idx_master_assignments_master
+CREATE INDEX IF NOT EXISTS idx_master_assignments_master
 ON attorney.master_file_assignments(master_file_id);
 
-CREATE INDEX idx_master_assignments_attorney
+CREATE INDEX IF NOT EXISTS idx_master_assignments_attorney
 ON attorney.master_file_assignments(attorney_id);
 
 -- =============================================================================
 -- ATTORNEY COMMUNICATIONS
 -- =============================================================================
 
-CREATE TABLE attorney.communications
+CREATE TABLE IF NOT EXISTS attorney.communications
 (
     communication_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -852,14 +853,14 @@ CREATE TABLE attorney.communications
 COMMENT ON TABLE attorney.communications
 IS 'Attorney communication history';
 
-CREATE INDEX idx_attorney_communications_firm
+CREATE INDEX IF NOT EXISTS idx_attorney_communications_firm
 ON attorney.communications(attorney_firm_id);
 
 -- =============================================================================
 -- INTERNAL NOTES
 -- =============================================================================
 
-CREATE TABLE attorney.internal_notes
+CREATE TABLE IF NOT EXISTS attorney.internal_notes
 (
     note_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -888,7 +889,7 @@ IS 'Internal CRM notes';
 -- MEETING HISTORY
 -- =============================================================================
 
-CREATE TABLE attorney.meetings
+CREATE TABLE IF NOT EXISTS attorney.meetings
 (
     meeting_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -924,7 +925,7 @@ IS 'Attorney meeting register';
 -- FIRM DOCUMENTS
 -- =============================================================================
 
-CREATE TABLE attorney.firm_documents
+CREATE TABLE IF NOT EXISTS attorney.firm_documents
 (
     firm_document_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -955,14 +956,14 @@ CREATE TABLE attorney.firm_documents
 COMMENT ON TABLE attorney.firm_documents
 IS 'Attorney firm documents';
 
-CREATE INDEX idx_firm_documents_firm
+CREATE INDEX IF NOT EXISTS idx_firm_documents_firm
 ON attorney.firm_documents(attorney_firm_id);
 
 -- =============================================================================
 -- PORTAL ACCESS
 -- =============================================================================
 
-CREATE TABLE attorney.portal_accounts
+CREATE TABLE IF NOT EXISTS attorney.portal_accounts
 (
     portal_account_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -993,7 +994,7 @@ IS 'Attorney portal accounts';
 -- DOCUMENT SHARING
 -- =============================================================================
 
-CREATE TABLE attorney.document_sharing
+CREATE TABLE IF NOT EXISTS attorney.document_sharing
 (
     document_share_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1024,7 +1025,7 @@ IS 'Secure attorney document sharing';
 -- BUSINESS DEVELOPMENT PIPELINE
 -- =============================================================================
 
-CREATE TABLE attorney.business_development_pipeline
+CREATE TABLE IF NOT EXISTS attorney.business_development_pipeline
 (
     opportunity_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1057,28 +1058,24 @@ IS 'CRM sales opportunities';
 -- ENTERPRISE ATTORNEY DIRECTORY
 -- =============================================================================
 
-CREATE VIEW attorney.v_attorney_directory
+CREATE OR REPLACE VIEW attorney.v_attorney_directory
 AS
 SELECT
-
-a.attorney_id,
-a.attorney_number,
-a.first_name,
-a.last_name,
-a.email,
-f.registered_name,
-b.branch_name,
-a.portal_enabled,
-a.active
-
+    a.attorney_id,
+    a.attorney_number,
+    a.first_name,
+    a.last_name,
+    a.email,
+    f.registered_name,
+    b.branch_name,
+    a.portal_enabled,
+    a.active
 FROM attorney.attorneys a
-
 JOIN attorney.attorney_firms f
-ON f.attorney_firm_id = a.attorney_firm_id
-
+    ON f.attorney_firm_id = a.attorney_firm_id
 LEFT JOIN attorney.attorney_branches b
-ON b.attorney_firm_id = f.attorney_firm_id
-AND b.is_head_office = TRUE;
+    ON b.attorney_firm_id = f.attorney_firm_id
+   AND b.is_head_office = TRUE;
 
 COMMENT ON VIEW attorney.v_attorney_directory
 IS 'Enterprise attorney directory';
@@ -1090,14 +1087,12 @@ IS 'Enterprise attorney directory';
 DO
 $$
 BEGIN
-
     RAISE NOTICE '';
     RAISE NOTICE '===================================================';
     RAISE NOTICE 'Attorney CRM Installed Successfully';
     RAISE NOTICE '005_attorneys.sql Completed';
     RAISE NOTICE '===================================================';
     RAISE NOTICE '';
-
 END;
 $$;
 
