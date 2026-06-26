@@ -8,7 +8,7 @@ FILE
 021_views.sql
 
 VERSION
-1.1 FIXED
+1.2 FIXED
 
 DESCRIPTION
 
@@ -19,7 +19,7 @@ Operational Dashboards
 Business Intelligence
 Cross-Module Reporting
 
-This rewrite avoids hard failures when optional tables do not exist.
+This rewrite avoids hard failures when optional tables or columns do not exist.
 ===============================================================================
 */
 
@@ -33,14 +33,38 @@ CREATE SCHEMA IF NOT EXISTS dashboard;
 
 DO
 $$
+DECLARE
+    v_has_appointments BOOLEAN;
+    v_has_file_number BOOLEAN;
+    v_file_number_expr TEXT;
+    v_file_number_groupby TEXT;
 BEGIN
-    IF to_regclass('appointments.appointments') IS NOT NULL THEN
-        EXECUTE $view$
+    v_has_appointments := to_regclass('appointments.appointments') IS NOT NULL;
+
+    SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'master'
+          AND table_name = 'master_files'
+          AND column_name = 'file_number'
+    )
+    INTO v_has_file_number;
+
+    IF v_has_file_number THEN
+        v_file_number_expr := 'mf.file_number AS file_number';
+        v_file_number_groupby := ', mf.file_number';
+    ELSE
+        v_file_number_expr := 'NULL::TEXT AS file_number';
+        v_file_number_groupby := '';
+    END IF;
+
+    IF v_has_appointments THEN
+        EXECUTE format($view$
             CREATE OR REPLACE VIEW dashboard.v_master_file_dashboard
             AS
             SELECT
                 mf.master_file_id,
-                mf.file_number,
+                %s,
                 mf.claim_number,
                 mf.status,
                 mf.priority,
@@ -72,8 +96,7 @@ BEGIN
             LEFT JOIN finance.invoices i
                 ON i.master_file_id = mf.master_file_id
             GROUP BY
-                mf.master_file_id,
-                mf.file_number,
+                mf.master_file_id%s,
                 mf.claim_number,
                 mf.status,
                 mf.priority,
@@ -83,14 +106,14 @@ BEGIN
                 c.first_name,
                 c.last_name,
                 a.company_name
-        $view$;
+        $view$, v_file_number_expr, v_file_number_groupby);
     ELSE
-        EXECUTE $view$
+        EXECUTE format($view$
             CREATE OR REPLACE VIEW dashboard.v_master_file_dashboard
             AS
             SELECT
                 mf.master_file_id,
-                mf.file_number,
+                %s,
                 mf.claim_number,
                 mf.status,
                 mf.priority,
@@ -120,8 +143,7 @@ BEGIN
             LEFT JOIN finance.invoices i
                 ON i.master_file_id = mf.master_file_id
             GROUP BY
-                mf.master_file_id,
-                mf.file_number,
+                mf.master_file_id%s,
                 mf.claim_number,
                 mf.status,
                 mf.priority,
@@ -131,7 +153,7 @@ BEGIN
                 c.first_name,
                 c.last_name,
                 a.company_name
-        $view$;
+        $view$, v_file_number_expr, v_file_number_groupby);
     END IF;
 END;
 $$;
@@ -145,9 +167,27 @@ IS 'Executive Master File Dashboard';
 
 DO
 $$
+DECLARE
+    v_has_file_number BOOLEAN;
+    v_file_number_expr TEXT;
 BEGIN
+    SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'master'
+          AND table_name = 'master_files'
+          AND column_name = 'file_number'
+    )
+    INTO v_has_file_number;
+
+    IF v_has_file_number THEN
+        v_file_number_expr := 'mf.file_number AS file_number';
+    ELSE
+        v_file_number_expr := 'NULL::TEXT AS file_number';
+    END IF;
+
     IF to_regclass('appointments.appointments') IS NOT NULL THEN
-        EXECUTE $view$
+        EXECUTE format($view$
             CREATE OR REPLACE VIEW dashboard.v_appointment_calendar
             AS
             SELECT
@@ -155,7 +195,7 @@ BEGIN
                 ap.appointment_date,
                 ap.appointment_time,
                 ap.status,
-                mf.file_number,
+                %s,
                 c.first_name,
                 c.last_name,
                 me.full_name AS medical_expert,
@@ -167,7 +207,7 @@ BEGIN
                 ON c.claimant_id = mf.claimant_id
             JOIN expert.medical_experts me
                 ON me.medical_expert_id = ap.expert_id
-        $view$;
+        $view$, v_file_number_expr);
     ELSE
         EXECUTE $view$
             CREATE OR REPLACE VIEW dashboard.v_appointment_calendar
@@ -338,16 +378,40 @@ IS 'Attorney Portfolio Dashboard';
 
 DO
 $$
+DECLARE
+    v_has_appointments BOOLEAN;
+    v_has_file_number BOOLEAN;
+    v_file_number_expr TEXT;
+    v_file_number_groupby TEXT;
 BEGIN
-    IF to_regclass('appointments.appointments') IS NOT NULL THEN
-        EXECUTE $view$
+    v_has_appointments := to_regclass('appointments.appointments') IS NOT NULL;
+
+    SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'master'
+          AND table_name = 'master_files'
+          AND column_name = 'file_number'
+    )
+    INTO v_has_file_number;
+
+    IF v_has_file_number THEN
+        v_file_number_expr := 'mf.file_number AS file_number';
+        v_file_number_groupby := ', mf.file_number';
+    ELSE
+        v_file_number_expr := 'NULL::TEXT AS file_number';
+        v_file_number_groupby := '';
+    END IF;
+
+    IF v_has_appointments THEN
+        EXECUTE format($view$
             CREATE OR REPLACE VIEW dashboard.v_claimant_progress
             AS
             SELECT
                 c.claimant_id,
                 c.first_name,
                 c.last_name,
-                mf.file_number,
+                %s,
                 mf.current_stage,
                 mf.status,
                 COUNT(DISTINCT ap.appointment_id) AS appointments,
@@ -368,20 +432,19 @@ BEGIN
             GROUP BY
                 c.claimant_id,
                 c.first_name,
-                c.last_name,
-                mf.file_number,
+                c.last_name%s,
                 mf.current_stage,
                 mf.status
-        $view$;
+        $view$, v_file_number_expr, v_file_number_groupby);
     ELSE
-        EXECUTE $view$
+        EXECUTE format($view$
             CREATE OR REPLACE VIEW dashboard.v_claimant_progress
             AS
             SELECT
                 c.claimant_id,
                 c.first_name,
                 c.last_name,
-                mf.file_number,
+                %s,
                 mf.current_stage,
                 mf.status,
                 0::BIGINT AS appointments,
@@ -400,11 +463,10 @@ BEGIN
             GROUP BY
                 c.claimant_id,
                 c.first_name,
-                c.last_name,
-                mf.file_number,
+                c.last_name%s,
                 mf.current_stage,
                 mf.status
-        $view$;
+        $view$, v_file_number_expr, v_file_number_groupby);
     END IF;
 END;
 $$;
@@ -741,22 +803,47 @@ IS 'Operations Dashboard';
 -- ENTERPRISE GLOBAL SEARCH
 -- =============================================================================
 
-CREATE OR REPLACE VIEW dashboard.v_global_search
-AS
-SELECT
-    mf.master_file_id,
-    mf.file_number,
-    mf.claim_number,
-    c.first_name,
-    c.last_name,
-    a.company_name,
-    mf.status,
-    mf.current_stage
-FROM master.master_files mf
-LEFT JOIN claimant.claimants c
-    ON c.claimant_id = mf.claimant_id
-LEFT JOIN attorney.attorneys a
-    ON a.attorney_id = mf.attorney_id;
+DO
+$$
+DECLARE
+    v_has_file_number BOOLEAN;
+    v_file_number_expr TEXT;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'master'
+          AND table_name = 'master_files'
+          AND column_name = 'file_number'
+    )
+    INTO v_has_file_number;
+
+    IF v_has_file_number THEN
+        v_file_number_expr := 'mf.file_number AS file_number';
+    ELSE
+        v_file_number_expr := 'NULL::TEXT AS file_number';
+    END IF;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_global_search
+        AS
+        SELECT
+            mf.master_file_id,
+            %s,
+            mf.claim_number,
+            c.first_name,
+            c.last_name,
+            a.company_name,
+            mf.status,
+            mf.current_stage
+        FROM master.master_files mf
+        LEFT JOIN claimant.claimants c
+            ON c.claimant_id = mf.claimant_id
+        LEFT JOIN attorney.attorneys a
+            ON a.attorney_id = mf.attorney_id
+    $view$, v_file_number_expr);
+END;
+$$;
 
 COMMENT ON VIEW dashboard.v_global_search
 IS 'Enterprise Global Search View';
