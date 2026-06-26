@@ -8,15 +8,15 @@ FILE
 020_rls_policies.sql
 
 VERSION
-1.3 FIXED
+1.4 FIXED
 
 DESCRIPTION
 
 Enterprise Row Level Security (RLS)
 
 Safe, rerunnable RLS deployment.
-This rewrite avoids hard failures when optional schemas/tables/columns do not
-exist and makes policy creation idempotent.
+This rewrite avoids hard failures when optional schemas, tables, or columns do
+not exist and makes policy creation idempotent.
 ===============================================================================
 */
 
@@ -328,50 +328,72 @@ BEGIN
             WITH CHECK (security.is_admin())
         ';
 
-        EXECUTE 'DROP POLICY IF EXISTS policy_internal_master ON master.master_files';
-        EXECUTE '
-            CREATE POLICY policy_internal_master
-            ON master.master_files
-            FOR SELECT
-            USING (
-                created_by = security.current_user_id()
-            )
-        ';
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'master'
+              AND table_name = 'master_files'
+              AND column_name = 'created_by'
+        ) THEN
+            EXECUTE 'DROP POLICY IF EXISTS policy_internal_master ON master.master_files';
+            EXECUTE '
+                CREATE POLICY policy_internal_master
+                ON master.master_files
+                FOR SELECT
+                USING (
+                    created_by = security.current_user_id()
+                )
+            ';
 
-        EXECUTE 'DROP POLICY IF EXISTS policy_master_insert ON master.master_files';
-        EXECUTE '
-            CREATE POLICY policy_master_insert
-            ON master.master_files
-            FOR INSERT
-            WITH CHECK (
-                created_by = security.current_user_id()
-                OR security.is_admin()
-            )
-        ';
+            EXECUTE 'DROP POLICY IF EXISTS policy_master_insert ON master.master_files';
+            EXECUTE '
+                CREATE POLICY policy_master_insert
+                ON master.master_files
+                FOR INSERT
+                WITH CHECK (
+                    created_by = security.current_user_id()
+                    OR security.is_admin()
+                )
+            ';
 
-        EXECUTE 'DROP POLICY IF EXISTS policy_master_update ON master.master_files';
-        EXECUTE '
-            CREATE POLICY policy_master_update
-            ON master.master_files
-            FOR UPDATE
-            USING (
-                created_by = security.current_user_id()
-                OR security.is_admin()
-            )
-            WITH CHECK (
-                created_by = security.current_user_id()
-                OR security.is_admin()
-            )
-        ';
+            EXECUTE 'DROP POLICY IF EXISTS policy_master_update ON master.master_files';
+            EXECUTE '
+                CREATE POLICY policy_master_update
+                ON master.master_files
+                FOR UPDATE
+                USING (
+                    created_by = security.current_user_id()
+                    OR security.is_admin()
+                )
+                WITH CHECK (
+                    created_by = security.current_user_id()
+                    OR security.is_admin()
+                )
+            ';
+        END IF;
 
-        IF to_regclass('attorney.attorneys') IS NOT NULL
-           AND EXISTS (
-               SELECT 1
-               FROM information_schema.columns
-               WHERE table_schema = 'attorney'
-                 AND table_name = 'attorneys'
-                 AND column_name = 'linked_portal_user'
-           ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'master'
+              AND table_name = 'master_files'
+              AND column_name = 'attorney_id'
+        )
+        AND to_regclass('attorney.attorneys') IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'attorney'
+              AND table_name = 'attorneys'
+              AND column_name = 'attorney_id'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'attorney'
+              AND table_name = 'attorneys'
+              AND column_name = 'linked_portal_user'
+        ) THEN
             EXECUTE 'DROP POLICY IF EXISTS policy_attorney_master ON master.master_files';
             EXECUTE '
                 CREATE POLICY policy_attorney_master
@@ -388,14 +410,28 @@ BEGIN
             ';
         END IF;
 
-        IF to_regclass('external.portal_users') IS NOT NULL
-           AND EXISTS (
-               SELECT 1
-               FROM information_schema.columns
-               WHERE table_schema = 'external'
-                 AND table_name = 'portal_users'
-                 AND column_name = 'claimant_id'
-           ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'master'
+              AND table_name = 'master_files'
+              AND column_name = 'claimant_id'
+        )
+        AND to_regclass('external.portal_users') IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'external'
+              AND table_name = 'portal_users'
+              AND column_name = 'claimant_id'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'external'
+              AND table_name = 'portal_users'
+              AND column_name = 'portal_user_id'
+        ) THEN
             EXECUTE 'DROP POLICY IF EXISTS policy_claimant_master_files ON master.master_files';
             EXECUTE '
                 CREATE POLICY policy_claimant_master_files
@@ -504,15 +540,43 @@ BEGIN
             ';
         END IF;
 
-        IF to_regclass('master.master_files') IS NOT NULL
-           AND to_regclass('attorney.attorneys') IS NOT NULL
-           AND EXISTS (
-               SELECT 1
-               FROM information_schema.columns
-               WHERE table_schema = 'attorney'
-                 AND table_name = 'attorneys'
-                 AND column_name = 'linked_portal_user'
-           ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'reports'
+              AND table_name = 'reports'
+              AND column_name = 'master_file_id'
+        )
+        AND to_regclass('master.master_files') IS NOT NULL
+        AND to_regclass('attorney.attorneys') IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'master'
+              AND table_name = 'master_files'
+              AND column_name = 'master_file_id'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'master'
+              AND table_name = 'master_files'
+              AND column_name = 'attorney_id'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'attorney'
+              AND table_name = 'attorneys'
+              AND column_name = 'attorney_id'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'attorney'
+              AND table_name = 'attorneys'
+              AND column_name = 'linked_portal_user'
+        ) THEN
             EXECUTE 'DROP POLICY IF EXISTS policy_attorney_reports ON reports.reports';
             EXECUTE '
                 CREATE POLICY policy_attorney_reports
@@ -534,15 +598,43 @@ BEGIN
             ';
         END IF;
 
-        IF to_regclass('master.master_files') IS NOT NULL
-           AND to_regclass('external.portal_users') IS NOT NULL
-           AND EXISTS (
-               SELECT 1
-               FROM information_schema.columns
-               WHERE table_schema = 'external'
-                 AND table_name = 'portal_users'
-                 AND column_name = 'claimant_id'
-           ) THEN
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'reports'
+              AND table_name = 'reports'
+              AND column_name = 'master_file_id'
+        )
+        AND to_regclass('master.master_files') IS NOT NULL
+        AND to_regclass('external.portal_users') IS NOT NULL
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'master'
+              AND table_name = 'master_files'
+              AND column_name = 'master_file_id'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'master'
+              AND table_name = 'master_files'
+              AND column_name = 'claimant_id'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'external'
+              AND table_name = 'portal_users'
+              AND column_name = 'claimant_id'
+        )
+        AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'external'
+              AND table_name = 'portal_users'
+              AND column_name = 'portal_user_id'
+        ) THEN
             EXECUTE 'DROP POLICY IF EXISTS policy_claimant_reports ON reports.reports';
             EXECUTE '
                 CREATE POLICY policy_claimant_reports
@@ -618,19 +710,34 @@ BEGIN
             WITH CHECK (security.is_admin())
         ';
 
-        EXECUTE 'DROP POLICY IF EXISTS policy_internal_notifications ON notifications.notification_queue';
-        EXECUTE '
-            CREATE POLICY policy_internal_notifications
-            ON notifications.notification_queue
-            FOR SELECT
-            USING (
-                recipient_user_id = security.current_user_id()
-                OR security.is_admin()
-            )
-        ';
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'notifications'
+              AND table_name = 'notification_queue'
+              AND column_name = 'recipient_user_id'
+        ) THEN
+            EXECUTE 'DROP POLICY IF EXISTS policy_internal_notifications ON notifications.notification_queue';
+            EXECUTE '
+                CREATE POLICY policy_internal_notifications
+                ON notifications.notification_queue
+                FOR SELECT
+                USING (
+                    recipient_user_id = security.current_user_id()
+                    OR security.is_admin()
+                )
+            ';
+        END IF;
     END IF;
 
     IF to_regclass('claimant.claimants') IS NOT NULL
+       AND EXISTS (
+           SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'claimant'
+             AND table_name = 'claimants'
+             AND column_name = 'claimant_id'
+       )
        AND to_regclass('external.portal_users') IS NOT NULL
        AND EXISTS (
            SELECT 1
@@ -638,6 +745,13 @@ BEGIN
            WHERE table_schema = 'external'
              AND table_name = 'portal_users'
              AND column_name = 'claimant_id'
+       )
+       AND EXISTS (
+           SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'external'
+             AND table_name = 'portal_users'
+             AND column_name = 'portal_user_id'
        ) THEN
         EXECUTE 'DROP POLICY IF EXISTS policy_claimant_profile ON claimant.claimants';
         EXECUTE '
@@ -655,24 +769,23 @@ BEGIN
         ';
     END IF;
 
-    IF to_regclass('assessment.assessments') IS NOT NULL THEN
-        IF EXISTS (
-            SELECT 1
-            FROM information_schema.columns
-            WHERE table_schema = 'assessment'
-              AND table_name = 'assessments'
-              AND column_name = 'created_by'
-        ) THEN
-            EXECUTE 'DROP POLICY IF EXISTS policy_assessments_internal ON assessment.assessments';
-            EXECUTE '
-                CREATE POLICY policy_assessments_internal
-                ON assessment.assessments
-                FOR SELECT
-                USING (
-                    created_by = security.current_user_id()
-                )
-            ';
-        END IF;
+    IF to_regclass('assessment.assessments') IS NOT NULL
+       AND EXISTS (
+           SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'assessment'
+             AND table_name = 'assessments'
+             AND column_name = 'created_by'
+       ) THEN
+        EXECUTE 'DROP POLICY IF EXISTS policy_assessments_internal ON assessment.assessments';
+        EXECUTE '
+            CREATE POLICY policy_assessments_internal
+            ON assessment.assessments
+            FOR SELECT
+            USING (
+                created_by = security.current_user_id()
+            )
+        ';
     END IF;
 
     IF to_regclass('audit.audit_events') IS NOT NULL THEN
@@ -704,7 +817,14 @@ $$;
 DO
 $$
 BEGIN
-    IF to_regclass('external.portal_users') IS NOT NULL THEN
+    IF to_regclass('external.portal_users') IS NOT NULL
+       AND EXISTS (
+           SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'external'
+             AND table_name = 'portal_users'
+             AND column_name = 'portal_user_id'
+       ) THEN
         EXECUTE 'DROP POLICY IF EXISTS policy_external_profile ON external.portal_users';
         EXECUTE '
             CREATE POLICY policy_external_profile
@@ -716,7 +836,14 @@ BEGIN
         ';
     END IF;
 
-    IF to_regclass('external.portal_notifications') IS NOT NULL THEN
+    IF to_regclass('external.portal_notifications') IS NOT NULL
+       AND EXISTS (
+           SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'external'
+             AND table_name = 'portal_notifications'
+             AND column_name = 'portal_user_id'
+       ) THEN
         EXECUTE 'DROP POLICY IF EXISTS policy_external_notifications ON external.portal_notifications';
         EXECUTE '
             CREATE POLICY policy_external_notifications
@@ -730,18 +857,70 @@ BEGIN
 
     IF to_regclass('external.messages') IS NOT NULL THEN
         EXECUTE 'DROP POLICY IF EXISTS policy_external_messages ON external.messages';
-        EXECUTE '
-            CREATE POLICY policy_external_messages
-            ON external.messages
-            FOR SELECT
-            USING (
-                sender_portal_user = security.current_user_id()
-                OR receiver_portal_user = security.current_user_id()
-            )
-        ';
+
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'external'
+              AND table_name = 'messages'
+              AND column_name = 'sender_portal_user'
+        ) AND EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'external'
+              AND table_name = 'messages'
+              AND column_name = 'receiver_portal_user'
+        ) THEN
+            EXECUTE '
+                CREATE POLICY policy_external_messages
+                ON external.messages
+                FOR SELECT
+                USING (
+                    sender_portal_user = security.current_user_id()
+                    OR receiver_portal_user = security.current_user_id()
+                )
+            ';
+        ELSIF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'external'
+              AND table_name = 'messages'
+              AND column_name = 'sender_portal_user'
+        ) THEN
+            EXECUTE '
+                CREATE POLICY policy_external_messages
+                ON external.messages
+                FOR SELECT
+                USING (
+                    sender_portal_user = security.current_user_id()
+                )
+            ';
+        ELSIF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'external'
+              AND table_name = 'messages'
+              AND column_name = 'portal_user_id'
+        ) THEN
+            EXECUTE '
+                CREATE POLICY policy_external_messages
+                ON external.messages
+                FOR SELECT
+                USING (
+                    portal_user_id = security.current_user_id()
+                )
+            ';
+        END IF;
     END IF;
 
-    IF to_regclass('external.document_access') IS NOT NULL THEN
+    IF to_regclass('external.document_access') IS NOT NULL
+       AND EXISTS (
+           SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'external'
+             AND table_name = 'document_access'
+             AND column_name = 'portal_user_id'
+       ) THEN
         EXECUTE 'DROP POLICY IF EXISTS policy_external_documents ON external.document_access';
         EXECUTE '
             CREATE POLICY policy_external_documents
@@ -813,24 +992,23 @@ BEGIN
         ';
     END IF;
 
-    IF to_regclass('appointments.appointments') IS NOT NULL THEN
-        IF EXISTS (
-            SELECT 1
-            FROM information_schema.columns
-            WHERE table_schema = 'appointments'
-              AND table_name = 'appointments'
-              AND column_name = 'created_by'
-        ) THEN
-            EXECUTE 'DROP POLICY IF EXISTS policy_appointments_internal ON appointments.appointments';
-            EXECUTE '
-                CREATE POLICY policy_appointments_internal
-                ON appointments.appointments
-                FOR SELECT
-                USING (
-                    created_by = security.current_user_id()
-                )
-            ';
-        END IF;
+    IF to_regclass('appointments.appointments') IS NOT NULL
+       AND EXISTS (
+           SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'appointments'
+             AND table_name = 'appointments'
+             AND column_name = 'created_by'
+       ) THEN
+        EXECUTE 'DROP POLICY IF EXISTS policy_appointments_internal ON appointments.appointments';
+        EXECUTE '
+            CREATE POLICY policy_appointments_internal
+            ON appointments.appointments
+            FOR SELECT
+            USING (
+                created_by = security.current_user_id()
+            )
+        ';
     END IF;
 
     IF to_regclass('audit.change_history') IS NOT NULL THEN
@@ -911,7 +1089,14 @@ BEGIN
         ';
     END IF;
 
-    IF to_regclass('notifications.user_preferences') IS NOT NULL THEN
+    IF to_regclass('notifications.user_preferences') IS NOT NULL
+       AND EXISTS (
+           SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'notifications'
+             AND table_name = 'user_preferences'
+             AND column_name = 'user_id'
+       ) THEN
         EXECUTE 'DROP POLICY IF EXISTS policy_notification_preferences ON notifications.user_preferences';
         EXECUTE '
             CREATE POLICY policy_notification_preferences
