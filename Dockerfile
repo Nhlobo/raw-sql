@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/ap
 
 COPY database ./database
 COPY migrate/run-migrations.sh ./run-migrations.sh
-COPY app.jar ./app.jar
+COPY target/app.jar app.jar
 
 RUN chmod +x ./run-migrations.sh
 
