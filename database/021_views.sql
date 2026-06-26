@@ -8,7 +8,7 @@ FILE
 021_views.sql
 
 VERSION
-2.0 FULLY HARDENED
+2.1 FULLY HARDENED
 
 DESCRIPTION
 
@@ -46,12 +46,16 @@ DECLARE
     v_has_mf_claimant_id BOOLEAN;
     v_has_mf_attorney_id BOOLEAN;
 
+    v_has_c_claimant_id BOOLEAN;
     v_has_c_first_name BOOLEAN;
     v_has_c_last_name BOOLEAN;
-    v_has_c_claimant_id BOOLEAN;
 
     v_has_a_attorney_id BOOLEAN;
     v_has_a_company_name BOOLEAN;
+
+    v_has_i_total_amount BOOLEAN;
+    v_has_i_outstanding_balance BOOLEAN;
+    v_has_i_master_file_id BOOLEAN;
 
     v_file_number_expr TEXT;
     v_claim_number_expr TEXT;
@@ -63,6 +67,8 @@ DECLARE
     v_first_name_expr TEXT;
     v_last_name_expr TEXT;
     v_company_name_expr TEXT;
+    v_invoice_total_expr TEXT;
+    v_outstanding_balance_expr TEXT;
 
     v_file_number_groupby TEXT;
     v_claim_number_groupby TEXT;
@@ -77,78 +83,94 @@ DECLARE
 
     v_claimant_join TEXT;
     v_attorney_join TEXT;
+    v_invoice_join TEXT;
 BEGIN
     v_has_appointments := to_regclass('appointments.appointments') IS NOT NULL;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'master' AND table_name = 'master_files' AND column_name = 'file_number'
+        WHERE table_schema='master' AND table_name='master_files' AND column_name='file_number'
     ) INTO v_has_mf_file_number;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'master' AND table_name = 'master_files' AND column_name = 'claim_number'
+        WHERE table_schema='master' AND table_name='master_files' AND column_name='claim_number'
     ) INTO v_has_mf_claim_number;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'master' AND table_name = 'master_files' AND column_name = 'status'
+        WHERE table_schema='master' AND table_name='master_files' AND column_name='status'
     ) INTO v_has_mf_status;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'master' AND table_name = 'master_files' AND column_name = 'priority'
+        WHERE table_schema='master' AND table_name='master_files' AND column_name='priority'
     ) INTO v_has_mf_priority;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'master' AND table_name = 'master_files' AND column_name = 'current_stage'
+        WHERE table_schema='master' AND table_name='master_files' AND column_name='current_stage'
     ) INTO v_has_mf_current_stage;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'master' AND table_name = 'master_files' AND column_name = 'date_opened'
+        WHERE table_schema='master' AND table_name='master_files' AND column_name='date_opened'
     ) INTO v_has_mf_date_opened;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'master' AND table_name = 'master_files' AND column_name = 'last_activity'
+        WHERE table_schema='master' AND table_name='master_files' AND column_name='last_activity'
     ) INTO v_has_mf_last_activity;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'master' AND table_name = 'master_files' AND column_name = 'claimant_id'
+        WHERE table_schema='master' AND table_name='master_files' AND column_name='claimant_id'
     ) INTO v_has_mf_claimant_id;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'master' AND table_name = 'master_files' AND column_name = 'attorney_id'
+        WHERE table_schema='master' AND table_name='master_files' AND column_name='attorney_id'
     ) INTO v_has_mf_attorney_id;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'claimant' AND table_name = 'claimants' AND column_name = 'claimant_id'
+        WHERE table_schema='claimant' AND table_name='claimants' AND column_name='claimant_id'
     ) INTO v_has_c_claimant_id;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'claimant' AND table_name = 'claimants' AND column_name = 'first_name'
+        WHERE table_schema='claimant' AND table_name='claimants' AND column_name='first_name'
     ) INTO v_has_c_first_name;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'claimant' AND table_name = 'claimants' AND column_name = 'last_name'
+        WHERE table_schema='claimant' AND table_name='claimants' AND column_name='last_name'
     ) INTO v_has_c_last_name;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'attorney' AND table_name = 'attorneys' AND column_name = 'attorney_id'
+        WHERE table_schema='attorney' AND table_name='attorneys' AND column_name='attorney_id'
     ) INTO v_has_a_attorney_id;
 
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'attorney' AND table_name = 'attorneys' AND column_name = 'company_name'
+        WHERE table_schema='attorney' AND table_name='attorneys' AND column_name='company_name'
     ) INTO v_has_a_company_name;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='master_file_id'
+    ) INTO v_has_i_master_file_id;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='total_amount'
+    ) INTO v_has_i_total_amount;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='outstanding_balance'
+    ) INTO v_has_i_outstanding_balance;
 
     v_file_number_expr := CASE WHEN v_has_mf_file_number THEN 'mf.file_number AS file_number' ELSE 'NULL::TEXT AS file_number' END;
     v_claim_number_expr := CASE WHEN v_has_mf_claim_number THEN 'mf.claim_number AS claim_number' ELSE 'NULL::TEXT AS claim_number' END;
@@ -160,6 +182,8 @@ BEGIN
     v_first_name_expr := CASE WHEN v_has_c_first_name THEN 'c.first_name AS first_name' ELSE 'NULL::TEXT AS first_name' END;
     v_last_name_expr := CASE WHEN v_has_c_last_name THEN 'c.last_name AS last_name' ELSE 'NULL::TEXT AS last_name' END;
     v_company_name_expr := CASE WHEN v_has_a_company_name THEN 'a.company_name AS company_name' ELSE 'NULL::TEXT AS company_name' END;
+    v_invoice_total_expr := CASE WHEN v_has_i_total_amount THEN 'COALESCE(SUM(i.total_amount), 0) AS invoice_total' ELSE '0::NUMERIC AS invoice_total' END;
+    v_outstanding_balance_expr := CASE WHEN v_has_i_outstanding_balance THEN 'COALESCE(SUM(i.outstanding_balance), 0) AS outstanding_balance' ELSE '0::NUMERIC AS outstanding_balance' END;
 
     v_file_number_groupby := CASE WHEN v_has_mf_file_number THEN ', mf.file_number' ELSE '' END;
     v_claim_number_groupby := CASE WHEN v_has_mf_claim_number THEN ', mf.claim_number' ELSE '' END;
@@ -186,6 +210,13 @@ BEGIN
             'LEFT JOIN attorney.attorneys a ON 1 = 0'
     END;
 
+    v_invoice_join := CASE
+        WHEN to_regclass('finance.invoices') IS NOT NULL AND v_has_i_master_file_id THEN
+            'LEFT JOIN finance.invoices i ON i.master_file_id = mf.master_file_id'
+        ELSE
+            'LEFT JOIN finance.invoices i ON 1 = 0'
+    END;
+
     IF v_has_appointments THEN
         EXECUTE format($view$
             CREATE OR REPLACE VIEW dashboard.v_master_file_dashboard AS
@@ -205,8 +236,8 @@ BEGIN
                 COUNT(DISTINCT ass.assessment_id) AS assessments,
                 COUNT(DISTINCT r.report_id) AS reports,
                 COUNT(DISTINCT d.document_id) AS documents,
-                COALESCE(SUM(i.total_amount), 0) AS invoice_total,
-                COALESCE(SUM(i.outstanding_balance), 0) AS outstanding_balance
+                %s,
+                %s
             FROM master.master_files mf
             %s
             %s
@@ -218,8 +249,7 @@ BEGIN
                 ON r.master_file_id = mf.master_file_id
             LEFT JOIN documents.documents d
                 ON d.master_file_id = mf.master_file_id
-            LEFT JOIN finance.invoices i
-                ON i.master_file_id = mf.master_file_id
+            %s
             GROUP BY
                 mf.master_file_id%s%s%s%s%s%s%s%s%s%s
         $view$,
@@ -233,8 +263,11 @@ BEGIN
             v_first_name_expr,
             v_last_name_expr,
             v_company_name_expr,
+            v_invoice_total_expr,
+            v_outstanding_balance_expr,
             v_claimant_join,
             v_attorney_join,
+            v_invoice_join,
             v_file_number_groupby,
             v_claim_number_groupby,
             v_status_groupby,
@@ -265,8 +298,8 @@ BEGIN
                 COUNT(DISTINCT ass.assessment_id) AS assessments,
                 COUNT(DISTINCT r.report_id) AS reports,
                 COUNT(DISTINCT d.document_id) AS documents,
-                COALESCE(SUM(i.total_amount), 0) AS invoice_total,
-                COALESCE(SUM(i.outstanding_balance), 0) AS outstanding_balance
+                %s,
+                %s
             FROM master.master_files mf
             %s
             %s
@@ -276,8 +309,7 @@ BEGIN
                 ON r.master_file_id = mf.master_file_id
             LEFT JOIN documents.documents d
                 ON d.master_file_id = mf.master_file_id
-            LEFT JOIN finance.invoices i
-                ON i.master_file_id = mf.master_file_id
+            %s
             GROUP BY
                 mf.master_file_id%s%s%s%s%s%s%s%s%s%s
         $view$,
@@ -291,8 +323,11 @@ BEGIN
             v_first_name_expr,
             v_last_name_expr,
             v_company_name_expr,
+            v_invoice_total_expr,
+            v_outstanding_balance_expr,
             v_claimant_join,
             v_attorney_join,
+            v_invoice_join,
             v_file_number_groupby,
             v_claim_number_groupby,
             v_status_groupby,
@@ -620,13 +655,22 @@ DECLARE
     v_has_a_company_name BOOLEAN;
     v_has_a_contact_person BOOLEAN;
 
+    v_has_i_master_file_id BOOLEAN;
+    v_has_i_invoice_id BOOLEAN;
+    v_has_i_total_amount BOOLEAN;
+    v_has_i_outstanding_balance BOOLEAN;
+
     v_company_name_expr TEXT;
     v_contact_person_expr TEXT;
     v_company_name_groupby TEXT;
     v_contact_person_groupby TEXT;
     v_status_open_expr TEXT;
     v_status_closed_expr TEXT;
+    v_invoice_count_expr TEXT;
+    v_total_billed_expr TEXT;
+    v_outstanding_balance_expr TEXT;
     v_join_condition TEXT;
+    v_invoice_join TEXT;
 BEGIN
     IF to_regclass('attorney.attorneys') IS NULL THEN
         EXECUTE $view$
@@ -671,6 +715,26 @@ BEGIN
         WHERE table_schema='attorney' AND table_name='attorneys' AND column_name='contact_person'
     ) INTO v_has_a_contact_person;
 
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='master_file_id'
+    ) INTO v_has_i_master_file_id;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='invoice_id'
+    ) INTO v_has_i_invoice_id;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='total_amount'
+    ) INTO v_has_i_total_amount;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='outstanding_balance'
+    ) INTO v_has_i_outstanding_balance;
+
     v_company_name_expr := CASE WHEN v_has_a_company_name THEN 'a.company_name AS company_name' ELSE 'NULL::TEXT AS company_name' END;
     v_contact_person_expr := CASE WHEN v_has_a_contact_person THEN 'a.contact_person AS contact_person' ELSE 'NULL::TEXT AS contact_person' END;
     v_company_name_groupby := CASE WHEN v_has_a_company_name THEN ', a.company_name' ELSE '' END;
@@ -686,9 +750,31 @@ BEGIN
         ELSE '0::BIGINT AS closed_cases'
     END;
 
+    v_invoice_count_expr := CASE
+        WHEN v_has_i_invoice_id THEN 'COUNT(DISTINCT i.invoice_id) AS invoices'
+        ELSE '0::BIGINT AS invoices'
+    END;
+
+    v_total_billed_expr := CASE
+        WHEN v_has_i_total_amount THEN 'COALESCE(SUM(i.total_amount), 0) AS total_billed'
+        ELSE '0::NUMERIC AS total_billed'
+    END;
+
+    v_outstanding_balance_expr := CASE
+        WHEN v_has_i_outstanding_balance THEN 'COALESCE(SUM(i.outstanding_balance), 0) AS outstanding_balance'
+        ELSE '0::NUMERIC AS outstanding_balance'
+    END;
+
     v_join_condition := CASE
         WHEN v_has_mf_attorney_id AND v_has_a_attorney_id THEN 'mf.attorney_id = a.attorney_id'
         ELSE '1 = 0'
+    END;
+
+    v_invoice_join := CASE
+        WHEN to_regclass('finance.invoices') IS NOT NULL AND v_has_i_master_file_id THEN
+            'LEFT JOIN finance.invoices i ON i.master_file_id = mf.master_file_id'
+        ELSE
+            'LEFT JOIN finance.invoices i ON 1 = 0'
     END;
 
     EXECUTE format($view$
@@ -700,14 +786,13 @@ BEGIN
             COUNT(DISTINCT mf.master_file_id) AS total_cases,
             %s,
             %s,
-            COUNT(DISTINCT i.invoice_id) AS invoices,
-            COALESCE(SUM(i.total_amount), 0) AS total_billed,
-            COALESCE(SUM(i.outstanding_balance), 0) AS outstanding_balance
+            %s,
+            %s,
+            %s
         FROM attorney.attorneys a
         LEFT JOIN master.master_files mf
             ON %s
-        LEFT JOIN finance.invoices i
-            ON i.master_file_id = mf.master_file_id
+        %s
         GROUP BY
             a.attorney_id%s%s
     $view$,
@@ -715,7 +800,11 @@ BEGIN
         v_contact_person_expr,
         v_status_open_expr,
         v_status_closed_expr,
+        v_invoice_count_expr,
+        v_total_billed_expr,
+        v_outstanding_balance_expr,
         v_join_condition,
+        v_invoice_join,
         v_company_name_groupby,
         v_contact_person_groupby
     );
@@ -919,20 +1008,19 @@ IS 'Claimant Progress Dashboard';
 
 DO
 $$
+DECLARE
+    v_has_invoice_status BOOLEAN;
+    v_has_total_amount BOOLEAN;
+    v_has_outstanding_balance BOOLEAN;
+    v_has_amount_paid BOOLEAN;
+
+    v_outstanding_count_expr TEXT;
+    v_paid_count_expr TEXT;
+    v_total_billed_expr TEXT;
+    v_outstanding_sum_expr TEXT;
+    v_total_received_expr TEXT;
 BEGIN
-    IF to_regclass('finance.invoices') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_finance_dashboard AS
-            SELECT
-                COUNT(*) AS total_invoices,
-                COUNT(*) FILTER (WHERE invoice_status = 'Outstanding') AS outstanding_invoices,
-                COUNT(*) FILTER (WHERE invoice_status = 'Paid') AS paid_invoices,
-                SUM(total_amount) AS total_billed,
-                SUM(outstanding_balance) AS outstanding_balance,
-                SUM(amount_paid) AS total_received
-            FROM finance.invoices
-        $view$;
-    ELSE
+    IF to_regclass('finance.invoices') IS NULL THEN
         EXECUTE $view$
             CREATE OR REPLACE VIEW dashboard.v_finance_dashboard AS
             SELECT
@@ -943,7 +1031,71 @@ BEGIN
                 0::NUMERIC AS outstanding_balance,
                 0::NUMERIC AS total_received
         $view$;
+        RETURN;
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='invoice_status'
+    ) INTO v_has_invoice_status;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='total_amount'
+    ) INTO v_has_total_amount;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='outstanding_balance'
+    ) INTO v_has_outstanding_balance;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='amount_paid'
+    ) INTO v_has_amount_paid;
+
+    v_outstanding_count_expr := CASE
+        WHEN v_has_invoice_status THEN 'COUNT(*) FILTER (WHERE invoice_status = ''Outstanding'') AS outstanding_invoices'
+        ELSE '0::BIGINT AS outstanding_invoices'
+    END;
+
+    v_paid_count_expr := CASE
+        WHEN v_has_invoice_status THEN 'COUNT(*) FILTER (WHERE invoice_status = ''Paid'') AS paid_invoices'
+        ELSE '0::BIGINT AS paid_invoices'
+    END;
+
+    v_total_billed_expr := CASE
+        WHEN v_has_total_amount THEN 'SUM(total_amount) AS total_billed'
+        ELSE '0::NUMERIC AS total_billed'
+    END;
+
+    v_outstanding_sum_expr := CASE
+        WHEN v_has_outstanding_balance THEN 'SUM(outstanding_balance) AS outstanding_balance'
+        ELSE '0::NUMERIC AS outstanding_balance'
+    END;
+
+    v_total_received_expr := CASE
+        WHEN v_has_amount_paid THEN 'SUM(amount_paid) AS total_received'
+        ELSE '0::NUMERIC AS total_received'
+    END;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_finance_dashboard AS
+        SELECT
+            COUNT(*) AS total_invoices,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s
+        FROM finance.invoices
+    $view$,
+        v_outstanding_count_expr,
+        v_paid_count_expr,
+        v_total_billed_expr,
+        v_outstanding_sum_expr,
+        v_total_received_expr
+    );
 END;
 $$;
 
@@ -956,28 +1108,24 @@ IS 'Finance Dashboard';
 
 DO
 $$
+DECLARE
+    v_has_invoice_number BOOLEAN;
+    v_has_attorney_id BOOLEAN;
+    v_has_invoice_date BOOLEAN;
+    v_has_due_date BOOLEAN;
+    v_has_invoice_age_days BOOLEAN;
+    v_has_outstanding_balance BOOLEAN;
+
+    v_invoice_number_expr TEXT;
+    v_attorney_id_expr TEXT;
+    v_invoice_date_expr TEXT;
+    v_due_date_expr TEXT;
+    v_invoice_age_expr TEXT;
+    v_outstanding_expr TEXT;
+    v_where_expr TEXT;
+    v_aging_expr TEXT;
 BEGIN
-    IF to_regclass('finance.invoices') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_debtor_aging AS
-            SELECT
-                invoice_number,
-                attorney_id,
-                invoice_date,
-                due_date,
-                invoice_age_days,
-                outstanding_balance,
-                CASE
-                    WHEN invoice_age_days <= 30 THEN '0-30 Days'
-                    WHEN invoice_age_days <= 60 THEN '31-60 Days'
-                    WHEN invoice_age_days <= 90 THEN '61-90 Days'
-                    WHEN invoice_age_days <= 120 THEN '91-120 Days'
-                    ELSE '120+ Days'
-                END AS aging_bucket
-            FROM finance.invoices
-            WHERE outstanding_balance > 0
-        $view$;
-    ELSE
+    IF to_regclass('finance.invoices') IS NULL THEN
         EXECUTE $view$
             CREATE OR REPLACE VIEW dashboard.v_debtor_aging AS
             SELECT
@@ -990,7 +1138,81 @@ BEGIN
                 NULL::TEXT AS aging_bucket
             WHERE FALSE
         $view$;
+        RETURN;
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='invoice_number'
+    ) INTO v_has_invoice_number;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='attorney_id'
+    ) INTO v_has_attorney_id;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='invoice_date'
+    ) INTO v_has_invoice_date;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='due_date'
+    ) INTO v_has_due_date;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='invoice_age_days'
+    ) INTO v_has_invoice_age_days;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='outstanding_balance'
+    ) INTO v_has_outstanding_balance;
+
+    v_invoice_number_expr := CASE WHEN v_has_invoice_number THEN 'invoice_number' ELSE 'NULL::TEXT AS invoice_number' END;
+    v_attorney_id_expr := CASE WHEN v_has_attorney_id THEN 'attorney_id' ELSE 'NULL::UUID AS attorney_id' END;
+    v_invoice_date_expr := CASE WHEN v_has_invoice_date THEN 'invoice_date' ELSE 'NULL::DATE AS invoice_date' END;
+    v_due_date_expr := CASE WHEN v_has_due_date THEN 'due_date' ELSE 'NULL::DATE AS due_date' END;
+    v_invoice_age_expr := CASE WHEN v_has_invoice_age_days THEN 'invoice_age_days' ELSE 'NULL::INTEGER AS invoice_age_days' END;
+    v_outstanding_expr := CASE WHEN v_has_outstanding_balance THEN 'outstanding_balance' ELSE 'NULL::NUMERIC AS outstanding_balance' END;
+    v_where_expr := CASE WHEN v_has_outstanding_balance THEN 'WHERE outstanding_balance > 0' ELSE '' END;
+    v_aging_expr := CASE
+        WHEN v_has_invoice_age_days THEN
+            'CASE
+                WHEN invoice_age_days <= 30 THEN ''0-30 Days''
+                WHEN invoice_age_days <= 60 THEN ''31-60 Days''
+                WHEN invoice_age_days <= 90 THEN ''61-90 Days''
+                WHEN invoice_age_days <= 120 THEN ''91-120 Days''
+                ELSE ''120+ Days''
+             END AS aging_bucket'
+        ELSE
+            'NULL::TEXT AS aging_bucket'
+    END;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_debtor_aging AS
+        SELECT
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s
+        FROM finance.invoices
+        %s
+    $view$,
+        v_invoice_number_expr,
+        v_attorney_id_expr,
+        v_invoice_date_expr,
+        v_due_date_expr,
+        v_invoice_age_expr,
+        v_outstanding_expr,
+        v_aging_expr,
+        v_where_expr
+    );
 END;
 $$;
 
@@ -1003,19 +1225,17 @@ IS 'Debtor Aging Dashboard';
 
 DO
 $$
+DECLARE
+    v_has_original_amount BOOLEAN;
+    v_has_outstanding_amount BOOLEAN;
+    v_has_agreement_status BOOLEAN;
+
+    v_original_amount_expr TEXT;
+    v_outstanding_amount_expr TEXT;
+    v_active_expr TEXT;
+    v_completed_expr TEXT;
 BEGIN
-    IF to_regclass('aod.aod_register') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_aod_dashboard AS
-            SELECT
-                COUNT(*) AS agreements,
-                SUM(original_amount) AS original_amount,
-                SUM(outstanding_amount) AS outstanding_amount,
-                COUNT(*) FILTER (WHERE agreement_status = 'Active') AS active_agreements,
-                COUNT(*) FILTER (WHERE agreement_status = 'Completed') AS completed_agreements
-            FROM aod.aod_register
-        $view$;
-    ELSE
+    IF to_regclass('aod.aod_register') IS NULL THEN
         EXECUTE $view$
             CREATE OR REPLACE VIEW dashboard.v_aod_dashboard AS
             SELECT
@@ -1025,7 +1245,44 @@ BEGIN
                 0::BIGINT AS active_agreements,
                 0::BIGINT AS completed_agreements
         $view$;
+        RETURN;
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='aod' AND table_name='aod_register' AND column_name='original_amount'
+    ) INTO v_has_original_amount;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='aod' AND table_name='aod_register' AND column_name='outstanding_amount'
+    ) INTO v_has_outstanding_amount;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='aod' AND table_name='aod_register' AND column_name='agreement_status'
+    ) INTO v_has_agreement_status;
+
+    v_original_amount_expr := CASE WHEN v_has_original_amount THEN 'SUM(original_amount) AS original_amount' ELSE '0::NUMERIC AS original_amount' END;
+    v_outstanding_amount_expr := CASE WHEN v_has_outstanding_amount THEN 'SUM(outstanding_amount) AS outstanding_amount' ELSE '0::NUMERIC AS outstanding_amount' END;
+    v_active_expr := CASE WHEN v_has_agreement_status THEN 'COUNT(*) FILTER (WHERE agreement_status = ''Active'') AS active_agreements' ELSE '0::BIGINT AS active_agreements' END;
+    v_completed_expr := CASE WHEN v_has_agreement_status THEN 'COUNT(*) FILTER (WHERE agreement_status = ''Completed'') AS completed_agreements' ELSE '0::BIGINT AS completed_agreements' END;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_aod_dashboard AS
+        SELECT
+            COUNT(*) AS agreements,
+            %s,
+            %s,
+            %s,
+            %s
+        FROM aod.aod_register
+    $view$,
+        v_original_amount_expr,
+        v_outstanding_amount_expr,
+        v_active_expr,
+        v_completed_expr
+    );
 END;
 $$;
 
@@ -1038,27 +1295,19 @@ IS 'Acknowledgement of Debt Dashboard';
 
 DO
 $$
+DECLARE
+    v_source_table TEXT;
+    v_has_payment_method BOOLEAN;
+    v_has_payment_amount BOOLEAN;
+
+    v_payment_method_expr TEXT;
+    v_payment_total_expr TEXT;
+    v_groupby_clause TEXT;
 BEGIN
     IF to_regclass('finance.customer_payments') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_payment_dashboard AS
-            SELECT
-                payment_method,
-                COUNT(*) AS payments,
-                SUM(payment_amount) AS total_paid
-            FROM finance.customer_payments
-            GROUP BY payment_method
-        $view$;
+        v_source_table := 'finance.customer_payments';
     ELSIF to_regclass('finance.payments') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_payment_dashboard AS
-            SELECT
-                payment_method,
-                COUNT(*) AS payments,
-                SUM(payment_amount) AS total_paid
-            FROM finance.payments
-            GROUP BY payment_method
-        $view$;
+        v_source_table := 'finance.payments';
     ELSE
         EXECUTE $view$
             CREATE OR REPLACE VIEW dashboard.v_payment_dashboard AS
@@ -1068,7 +1317,41 @@ BEGIN
                 0::NUMERIC AS total_paid
             WHERE FALSE
         $view$;
+        RETURN;
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = split_part(v_source_table, '.', 1)
+          AND table_name = split_part(v_source_table, '.', 2)
+          AND column_name = 'payment_method'
+    ) INTO v_has_payment_method;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = split_part(v_source_table, '.', 1)
+          AND table_name = split_part(v_source_table, '.', 2)
+          AND column_name = 'payment_amount'
+    ) INTO v_has_payment_amount;
+
+    v_payment_method_expr := CASE WHEN v_has_payment_method THEN 'payment_method' ELSE 'NULL::TEXT AS payment_method' END;
+    v_payment_total_expr := CASE WHEN v_has_payment_amount THEN 'SUM(payment_amount) AS total_paid' ELSE '0::NUMERIC AS total_paid' END;
+    v_groupby_clause := CASE WHEN v_has_payment_method THEN 'GROUP BY payment_method' ELSE '' END;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_payment_dashboard AS
+        SELECT
+            %s,
+            COUNT(*) AS payments,
+            %s
+        FROM %s
+        %s
+    $view$,
+        v_payment_method_expr,
+        v_payment_total_expr,
+        v_source_table,
+        v_groupby_clause
+    );
 END;
 $$;
 
@@ -1081,27 +1364,20 @@ IS 'Payment Dashboard';
 
 DO
 $$
+DECLARE
+    v_source_table TEXT;
+    v_has_payment_date BOOLEAN;
+    v_has_payment_amount BOOLEAN;
+
+    v_payment_month_expr TEXT;
+    v_total_received_expr TEXT;
+    v_groupby_clause TEXT;
+    v_orderby_clause TEXT;
 BEGIN
     IF to_regclass('finance.customer_payments') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_cashflow AS
-            SELECT
-                DATE_TRUNC('month', payment_date) AS payment_month,
-                SUM(payment_amount) AS total_received
-            FROM finance.customer_payments
-            GROUP BY DATE_TRUNC('month', payment_date)
-            ORDER BY payment_month
-        $view$;
+        v_source_table := 'finance.customer_payments';
     ELSIF to_regclass('finance.payments') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_cashflow AS
-            SELECT
-                DATE_TRUNC('month', payment_date) AS payment_month,
-                SUM(payment_amount) AS total_received
-            FROM finance.payments
-            GROUP BY DATE_TRUNC('month', payment_date)
-            ORDER BY payment_month
-        $view$;
+        v_source_table := 'finance.payments';
     ELSE
         EXECUTE $view$
             CREATE OR REPLACE VIEW dashboard.v_cashflow AS
@@ -1110,7 +1386,43 @@ BEGIN
                 0::NUMERIC AS total_received
             WHERE FALSE
         $view$;
+        RETURN;
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = split_part(v_source_table, '.', 1)
+          AND table_name = split_part(v_source_table, '.', 2)
+          AND column_name = 'payment_date'
+    ) INTO v_has_payment_date;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = split_part(v_source_table, '.', 1)
+          AND table_name = split_part(v_source_table, '.', 2)
+          AND column_name = 'payment_amount'
+    ) INTO v_has_payment_amount;
+
+    v_payment_month_expr := CASE WHEN v_has_payment_date THEN 'DATE_TRUNC(''month'', payment_date) AS payment_month' ELSE 'NULL::TIMESTAMP AS payment_month' END;
+    v_total_received_expr := CASE WHEN v_has_payment_amount THEN 'SUM(payment_amount) AS total_received' ELSE '0::NUMERIC AS total_received' END;
+    v_groupby_clause := CASE WHEN v_has_payment_date THEN 'GROUP BY DATE_TRUNC(''month'', payment_date)' ELSE '' END;
+    v_orderby_clause := CASE WHEN v_has_payment_date THEN 'ORDER BY payment_month' ELSE '' END;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_cashflow AS
+        SELECT
+            %s,
+            %s
+        FROM %s
+        %s
+        %s
+    $view$,
+        v_payment_month_expr,
+        v_total_received_expr,
+        v_source_table,
+        v_groupby_clause,
+        v_orderby_clause
+    );
 END;
 $$;
 
@@ -1123,19 +1435,15 @@ IS 'Monthly Cash Flow Dashboard';
 
 DO
 $$
+DECLARE
+    v_has_collection_status BOOLEAN;
+    v_has_balance_due BOOLEAN;
+
+    v_collection_status_expr TEXT;
+    v_total_balance_expr TEXT;
+    v_groupby_clause TEXT;
 BEGIN
-    IF to_regclass('aod.collection_cases') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_collection_dashboard AS
-            SELECT
-                collection_status,
-                COUNT(*) AS total_cases,
-                SUM(balance_due) AS total_balance
-            FROM aod.collection_cases
-            GROUP BY
-                collection_status
-        $view$;
-    ELSE
+    IF to_regclass('aod.collection_cases') IS NULL THEN
         EXECUTE $view$
             CREATE OR REPLACE VIEW dashboard.v_collection_dashboard AS
             SELECT
@@ -1144,7 +1452,36 @@ BEGIN
                 0::NUMERIC AS total_balance
             WHERE FALSE
         $view$;
+        RETURN;
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='aod' AND table_name='collection_cases' AND column_name='collection_status'
+    ) INTO v_has_collection_status;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='aod' AND table_name='collection_cases' AND column_name='balance_due'
+    ) INTO v_has_balance_due;
+
+    v_collection_status_expr := CASE WHEN v_has_collection_status THEN 'collection_status' ELSE 'NULL::TEXT AS collection_status' END;
+    v_total_balance_expr := CASE WHEN v_has_balance_due THEN 'SUM(balance_due) AS total_balance' ELSE '0::NUMERIC AS total_balance' END;
+    v_groupby_clause := CASE WHEN v_has_collection_status THEN 'GROUP BY collection_status' ELSE '' END;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_collection_dashboard AS
+        SELECT
+            %s,
+            COUNT(*) AS total_cases,
+            %s
+        FROM aod.collection_cases
+        %s
+    $view$,
+        v_collection_status_expr,
+        v_total_balance_expr,
+        v_groupby_clause
+    );
 END;
 $$;
 
@@ -1157,19 +1494,17 @@ IS 'Debt Collection Dashboard';
 
 DO
 $$
+DECLARE
+    v_has_total_amount BOOLEAN;
+    v_has_amount_paid BOOLEAN;
+    v_has_outstanding_balance BOOLEAN;
+
+    v_revenue_expr TEXT;
+    v_payments_expr TEXT;
+    v_outstanding_expr TEXT;
+    v_collection_expr TEXT;
 BEGIN
-    IF to_regclass('finance.invoices') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_financial_kpis AS
-            SELECT
-                COUNT(*) AS total_invoices,
-                SUM(total_amount) AS revenue,
-                SUM(amount_paid) AS payments_received,
-                SUM(outstanding_balance) AS outstanding,
-                ROUND(SUM(amount_paid) / NULLIF(SUM(total_amount), 0) * 100, 2) AS collection_percentage
-            FROM finance.invoices
-        $view$;
-    ELSE
+    IF to_regclass('finance.invoices') IS NULL THEN
         EXECUTE $view$
             CREATE OR REPLACE VIEW dashboard.v_financial_kpis AS
             SELECT
@@ -1179,7 +1514,49 @@ BEGIN
                 0::NUMERIC AS outstanding,
                 0::NUMERIC AS collection_percentage
         $view$;
+        RETURN;
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='total_amount'
+    ) INTO v_has_total_amount;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='amount_paid'
+    ) INTO v_has_amount_paid;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='outstanding_balance'
+    ) INTO v_has_outstanding_balance;
+
+    v_revenue_expr := CASE WHEN v_has_total_amount THEN 'SUM(total_amount) AS revenue' ELSE '0::NUMERIC AS revenue' END;
+    v_payments_expr := CASE WHEN v_has_amount_paid THEN 'SUM(amount_paid) AS payments_received' ELSE '0::NUMERIC AS payments_received' END;
+    v_outstanding_expr := CASE WHEN v_has_outstanding_balance THEN 'SUM(outstanding_balance) AS outstanding' ELSE '0::NUMERIC AS outstanding' END;
+    v_collection_expr := CASE
+        WHEN v_has_total_amount AND v_has_amount_paid THEN
+            'ROUND(SUM(amount_paid) / NULLIF(SUM(total_amount), 0) * 100, 2) AS collection_percentage'
+        ELSE
+            '0::NUMERIC AS collection_percentage'
+    END;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_financial_kpis AS
+        SELECT
+            COUNT(*) AS total_invoices,
+            %s,
+            %s,
+            %s,
+            %s
+        FROM finance.invoices
+    $view$,
+        v_revenue_expr,
+        v_payments_expr,
+        v_outstanding_expr,
+        v_collection_expr
+    );
 END;
 $$;
 
@@ -1192,23 +1569,19 @@ IS 'Executive Financial KPI Dashboard';
 
 DO
 $$
+DECLARE
+    v_has_notification_channel BOOLEAN;
+    v_has_queue_status BOOLEAN;
+    v_has_priority BOOLEAN;
+
+    v_channel_expr TEXT;
+    v_status_expr TEXT;
+    v_high_priority_expr TEXT;
+    v_failed_expr TEXT;
+    v_sent_expr TEXT;
+    v_groupby_clause TEXT;
 BEGIN
-    IF to_regclass('notifications.notification_queue') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_notification_dashboard AS
-            SELECT
-                notification_channel,
-                queue_status,
-                COUNT(*) AS total_notifications,
-                COUNT(*) FILTER (WHERE priority = 'high') AS high_priority,
-                COUNT(*) FILTER (WHERE queue_status = 'failed') AS failed_notifications,
-                COUNT(*) FILTER (WHERE queue_status = 'sent') AS delivered_notifications
-            FROM notifications.notification_queue
-            GROUP BY
-                notification_channel,
-                queue_status
-        $view$;
-    ELSE
+    IF to_regclass('notifications.notification_queue') IS NULL THEN
         EXECUTE $view$
             CREATE OR REPLACE VIEW dashboard.v_notification_dashboard AS
             SELECT
@@ -1220,7 +1593,55 @@ BEGIN
                 0::BIGINT AS delivered_notifications
             WHERE FALSE
         $view$;
+        RETURN;
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='notifications' AND table_name='notification_queue' AND column_name='notification_channel'
+    ) INTO v_has_notification_channel;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='notifications' AND table_name='notification_queue' AND column_name='queue_status'
+    ) INTO v_has_queue_status;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='notifications' AND table_name='notification_queue' AND column_name='priority'
+    ) INTO v_has_priority;
+
+    v_channel_expr := CASE WHEN v_has_notification_channel THEN 'notification_channel' ELSE 'NULL::TEXT AS notification_channel' END;
+    v_status_expr := CASE WHEN v_has_queue_status THEN 'queue_status' ELSE 'NULL::TEXT AS queue_status' END;
+    v_high_priority_expr := CASE WHEN v_has_priority THEN 'COUNT(*) FILTER (WHERE priority = ''high'') AS high_priority' ELSE '0::BIGINT AS high_priority' END;
+    v_failed_expr := CASE WHEN v_has_queue_status THEN 'COUNT(*) FILTER (WHERE queue_status = ''failed'') AS failed_notifications' ELSE '0::BIGINT AS failed_notifications' END;
+    v_sent_expr := CASE WHEN v_has_queue_status THEN 'COUNT(*) FILTER (WHERE queue_status = ''sent'') AS delivered_notifications' ELSE '0::BIGINT AS delivered_notifications' END;
+    v_groupby_clause := CASE
+        WHEN v_has_notification_channel AND v_has_queue_status THEN 'GROUP BY notification_channel, queue_status'
+        WHEN v_has_notification_channel THEN 'GROUP BY notification_channel'
+        WHEN v_has_queue_status THEN 'GROUP BY queue_status'
+        ELSE ''
+    END;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_notification_dashboard AS
+        SELECT
+            %s,
+            %s,
+            COUNT(*) AS total_notifications,
+            %s,
+            %s,
+            %s
+        FROM notifications.notification_queue
+        %s
+    $view$,
+        v_channel_expr,
+        v_status_expr,
+        v_high_priority_expr,
+        v_failed_expr,
+        v_sent_expr,
+        v_groupby_clause
+    );
 END;
 $$;
 
@@ -1233,19 +1654,16 @@ IS 'Enterprise Notification Dashboard';
 
 DO
 $$
+DECLARE
+    v_has_account_status BOOLEAN;
+    v_has_last_login BOOLEAN;
+
+    v_active_expr TEXT;
+    v_inactive_expr TEXT;
+    v_last_login_expr TEXT;
+    v_active_30_expr TEXT;
 BEGIN
-    IF to_regclass('external.portal_users') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_external_portal_dashboard AS
-            SELECT
-                COUNT(*) AS total_users,
-                COUNT(*) FILTER (WHERE account_status = 'Active') AS active_users,
-                COUNT(*) FILTER (WHERE account_status = 'Inactive') AS inactive_users,
-                MAX(last_login) AS last_login,
-                COUNT(*) FILTER (WHERE last_login >= CURRENT_DATE - INTERVAL '30 days') AS active_last_30_days
-            FROM external.portal_users
-        $view$;
-    ELSE
+    IF to_regclass('external.portal_users') IS NULL THEN
         EXECUTE $view$
             CREATE OR REPLACE VIEW dashboard.v_external_portal_dashboard AS
             SELECT
@@ -1255,7 +1673,39 @@ BEGIN
                 NULL::TIMESTAMP AS last_login,
                 0::BIGINT AS active_last_30_days
         $view$;
+        RETURN;
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='external' AND table_name='portal_users' AND column_name='account_status'
+    ) INTO v_has_account_status;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='external' AND table_name='portal_users' AND column_name='last_login'
+    ) INTO v_has_last_login;
+
+    v_active_expr := CASE WHEN v_has_account_status THEN 'COUNT(*) FILTER (WHERE account_status = ''Active'') AS active_users' ELSE '0::BIGINT AS active_users' END;
+    v_inactive_expr := CASE WHEN v_has_account_status THEN 'COUNT(*) FILTER (WHERE account_status = ''Inactive'') AS inactive_users' ELSE '0::BIGINT AS inactive_users' END;
+    v_last_login_expr := CASE WHEN v_has_last_login THEN 'MAX(last_login) AS last_login' ELSE 'NULL::TIMESTAMP AS last_login' END;
+    v_active_30_expr := CASE WHEN v_has_last_login THEN 'COUNT(*) FILTER (WHERE last_login >= CURRENT_DATE - INTERVAL ''30 days'') AS active_last_30_days' ELSE '0::BIGINT AS active_last_30_days' END;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_external_portal_dashboard AS
+        SELECT
+            COUNT(*) AS total_users,
+            %s,
+            %s,
+            %s,
+            %s
+        FROM external.portal_users
+    $view$,
+        v_active_expr,
+        v_inactive_expr,
+        v_last_login_expr,
+        v_active_30_expr
+    );
 END;
 $$;
 
@@ -1268,21 +1718,17 @@ IS 'External Portal Dashboard';
 
 DO
 $$
+DECLARE
+    v_has_event_type BOOLEAN;
+    v_has_module_name BOOLEAN;
+    v_has_occurred_at BOOLEAN;
+
+    v_event_expr TEXT;
+    v_module_expr TEXT;
+    v_latest_expr TEXT;
+    v_groupby_clause TEXT;
 BEGIN
-    IF to_regclass('audit.audit_events') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_audit_dashboard AS
-            SELECT
-                event_type,
-                module_name,
-                COUNT(*) AS total_events,
-                MAX(occurred_at) AS latest_activity
-            FROM audit.audit_events
-            GROUP BY
-                event_type,
-                module_name
-        $view$;
-    ELSE
+    IF to_regclass('audit.audit_events') IS NULL THEN
         EXECUTE $view$
             CREATE OR REPLACE VIEW dashboard.v_audit_dashboard AS
             SELECT
@@ -1292,7 +1738,49 @@ BEGIN
                 NULL::TIMESTAMP AS latest_activity
             WHERE FALSE
         $view$;
+        RETURN;
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='audit' AND table_name='audit_events' AND column_name='event_type'
+    ) INTO v_has_event_type;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='audit' AND table_name='audit_events' AND column_name='module_name'
+    ) INTO v_has_module_name;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='audit' AND table_name='audit_events' AND column_name='occurred_at'
+    ) INTO v_has_occurred_at;
+
+    v_event_expr := CASE WHEN v_has_event_type THEN 'event_type' ELSE 'NULL::TEXT AS event_type' END;
+    v_module_expr := CASE WHEN v_has_module_name THEN 'module_name' ELSE 'NULL::TEXT AS module_name' END;
+    v_latest_expr := CASE WHEN v_has_occurred_at THEN 'MAX(occurred_at) AS latest_activity' ELSE 'NULL::TIMESTAMP AS latest_activity' END;
+    v_groupby_clause := CASE
+        WHEN v_has_event_type AND v_has_module_name THEN 'GROUP BY event_type, module_name'
+        WHEN v_has_event_type THEN 'GROUP BY event_type'
+        WHEN v_has_module_name THEN 'GROUP BY module_name'
+        ELSE ''
+    END;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_audit_dashboard AS
+        SELECT
+            %s,
+            %s,
+            COUNT(*) AS total_events,
+            %s
+        FROM audit.audit_events
+        %s
+    $view$,
+        v_event_expr,
+        v_module_expr,
+        v_latest_expr,
+        v_groupby_clause
+    );
 END;
 $$;
 
@@ -1305,22 +1793,13 @@ IS 'Enterprise Audit Dashboard';
 
 DO
 $$
+DECLARE
+    v_has_compliant BOOLEAN;
+    v_compliant_expr TEXT;
+    v_non_compliant_expr TEXT;
+    v_percentage_expr TEXT;
 BEGIN
-    IF to_regclass('audit.compliance_audit') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_compliance_dashboard AS
-            SELECT
-                COUNT(*) AS total_reviews,
-                COUNT(*) FILTER (WHERE compliant = TRUE) AS compliant_reviews,
-                COUNT(*) FILTER (WHERE compliant = FALSE) AS non_compliant_reviews,
-                ROUND(
-                    COUNT(*) FILTER (WHERE compliant = TRUE)::NUMERIC
-                    / NULLIF(COUNT(*), 0) * 100,
-                    2
-                ) AS compliance_percentage
-            FROM audit.compliance_audit
-        $view$;
-    ELSE
+    IF to_regclass('audit.compliance_audit') IS NULL THEN
         EXECUTE $view$
             CREATE OR REPLACE VIEW dashboard.v_compliance_dashboard AS
             SELECT
@@ -1329,7 +1808,36 @@ BEGIN
                 0::BIGINT AS non_compliant_reviews,
                 0::NUMERIC AS compliance_percentage
         $view$;
+        RETURN;
     END IF;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='audit' AND table_name='compliance_audit' AND column_name='compliant'
+    ) INTO v_has_compliant;
+
+    v_compliant_expr := CASE WHEN v_has_compliant THEN 'COUNT(*) FILTER (WHERE compliant = TRUE) AS compliant_reviews' ELSE '0::BIGINT AS compliant_reviews' END;
+    v_non_compliant_expr := CASE WHEN v_has_compliant THEN 'COUNT(*) FILTER (WHERE compliant = FALSE) AS non_compliant_reviews' ELSE '0::BIGINT AS non_compliant_reviews' END;
+    v_percentage_expr := CASE
+        WHEN v_has_compliant THEN
+            'ROUND(COUNT(*) FILTER (WHERE compliant = TRUE)::NUMERIC / NULLIF(COUNT(*), 0) * 100, 2) AS compliance_percentage'
+        ELSE
+            '0::NUMERIC AS compliance_percentage'
+    END;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_compliance_dashboard AS
+        SELECT
+            COUNT(*) AS total_reviews,
+            %s,
+            %s,
+            %s
+        FROM audit.compliance_audit
+    $view$,
+        v_compliant_expr,
+        v_non_compliant_expr,
+        v_percentage_expr
+    );
 END;
 $$;
 
@@ -1342,38 +1850,52 @@ IS 'Compliance Dashboard';
 
 DO
 $$
+DECLARE
+    v_total_revenue_expr TEXT;
+    v_outstanding_balance_expr TEXT;
 BEGIN
-    IF to_regclass('appointments.appointments') IS NOT NULL THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_executive_kpis AS
-            SELECT
-                (SELECT COUNT(*) FROM master.master_files) AS total_master_files,
-                (SELECT COUNT(*) FROM appointments.appointments) AS total_appointments,
-                (SELECT COUNT(*) FROM assessment.assessments) AS total_assessments,
-                (SELECT COUNT(*) FROM reports.reports) AS total_reports,
-                (SELECT COUNT(*) FROM documents.documents) AS total_documents,
-                (SELECT COUNT(*) FROM finance.invoices) AS total_invoices,
-                (SELECT SUM(total_amount) FROM finance.invoices) AS total_revenue,
-                (SELECT SUM(outstanding_balance) FROM finance.invoices) AS outstanding_balance,
-                (SELECT COUNT(*) FROM external.portal_users) AS portal_users,
-                (SELECT COUNT(*) FROM audit.audit_events) AS audit_events
-        $view$;
+    IF to_regclass('finance.invoices') IS NOT NULL AND EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='total_amount'
+    ) THEN
+        v_total_revenue_expr := '(SELECT SUM(total_amount) FROM finance.invoices) AS total_revenue';
     ELSE
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_executive_kpis AS
-            SELECT
-                (SELECT COUNT(*) FROM master.master_files) AS total_master_files,
-                0::BIGINT AS total_appointments,
-                (SELECT COUNT(*) FROM assessment.assessments) AS total_assessments,
-                (SELECT COUNT(*) FROM reports.reports) AS total_reports,
-                (SELECT COUNT(*) FROM documents.documents) AS total_documents,
-                (SELECT COUNT(*) FROM finance.invoices) AS total_invoices,
-                (SELECT SUM(total_amount) FROM finance.invoices) AS total_revenue,
-                (SELECT SUM(outstanding_balance) FROM finance.invoices) AS outstanding_balance,
-                (SELECT COUNT(*) FROM external.portal_users) AS portal_users,
-                (SELECT COUNT(*) FROM audit.audit_events) AS audit_events
-        $view$;
+        v_total_revenue_expr := '0::NUMERIC AS total_revenue';
     END IF;
+
+    IF to_regclass('finance.invoices') IS NOT NULL AND EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='outstanding_balance'
+    ) THEN
+        v_outstanding_balance_expr := '(SELECT SUM(outstanding_balance) FROM finance.invoices) AS outstanding_balance';
+    ELSE
+        v_outstanding_balance_expr := '0::NUMERIC AS outstanding_balance';
+    END IF;
+
+    EXECUTE format($view$
+        CREATE OR REPLACE VIEW dashboard.v_executive_kpis AS
+        SELECT
+            (SELECT COUNT(*) FROM master.master_files) AS total_master_files,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s
+    $view$,
+        CASE WHEN to_regclass('appointments.appointments') IS NOT NULL THEN '(SELECT COUNT(*) FROM appointments.appointments) AS total_appointments' ELSE '0::BIGINT AS total_appointments' END,
+        CASE WHEN to_regclass('assessment.assessments') IS NOT NULL THEN '(SELECT COUNT(*) FROM assessment.assessments) AS total_assessments' ELSE '0::BIGINT AS total_assessments' END,
+        CASE WHEN to_regclass('reports.reports') IS NOT NULL THEN '(SELECT COUNT(*) FROM reports.reports) AS total_reports' ELSE '0::BIGINT AS total_reports' END,
+        CASE WHEN to_regclass('documents.documents') IS NOT NULL THEN '(SELECT COUNT(*) FROM documents.documents) AS total_documents' ELSE '0::BIGINT AS total_documents' END,
+        CASE WHEN to_regclass('finance.invoices') IS NOT NULL THEN '(SELECT COUNT(*) FROM finance.invoices) AS total_invoices' ELSE '0::BIGINT AS total_invoices' END,
+        v_total_revenue_expr,
+        v_outstanding_balance_expr,
+        CASE WHEN to_regclass('external.portal_users') IS NOT NULL THEN '(SELECT COUNT(*) FROM external.portal_users) AS portal_users' ELSE '0::BIGINT AS portal_users' END,
+        CASE WHEN to_regclass('audit.audit_events') IS NOT NULL THEN '(SELECT COUNT(*) FROM audit.audit_events) AS audit_events' ELSE '0::BIGINT AS audit_events' END
+    );
 END;
 $$;
 
@@ -1569,16 +2091,56 @@ DO
 $$
 DECLARE
     v_has_date_opened BOOLEAN;
+    v_has_i_master_file_id BOOLEAN;
+    v_has_i_total_amount BOOLEAN;
+    v_has_i_amount_paid BOOLEAN;
+    v_has_i_outstanding_balance BOOLEAN;
+
     v_date_opened_expr TEXT;
+    v_revenue_expr TEXT;
+    v_payments_expr TEXT;
+    v_outstanding_expr TEXT;
+    v_invoice_join TEXT;
 BEGIN
     SELECT EXISTS (
         SELECT 1 FROM information_schema.columns
         WHERE table_schema='master' AND table_name='master_files' AND column_name='date_opened'
     ) INTO v_has_date_opened;
 
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='master_file_id'
+    ) INTO v_has_i_master_file_id;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='total_amount'
+    ) INTO v_has_i_total_amount;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='amount_paid'
+    ) INTO v_has_i_amount_paid;
+
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='finance' AND table_name='invoices' AND column_name='outstanding_balance'
+    ) INTO v_has_i_outstanding_balance;
+
     v_date_opened_expr := CASE
         WHEN v_has_date_opened THEN 'DATE_TRUNC(''month'', mf.date_opened)'
         ELSE 'NULL::TIMESTAMP'
+    END;
+
+    v_revenue_expr := CASE WHEN v_has_i_total_amount THEN 'SUM(i.total_amount) AS revenue' ELSE '0::NUMERIC AS revenue' END;
+    v_payments_expr := CASE WHEN v_has_i_amount_paid THEN 'SUM(i.amount_paid) AS payments' ELSE '0::NUMERIC AS payments' END;
+    v_outstanding_expr := CASE WHEN v_has_i_outstanding_balance THEN 'SUM(i.outstanding_balance) AS outstanding' ELSE '0::NUMERIC AS outstanding' END;
+
+    v_invoice_join := CASE
+        WHEN to_regclass('finance.invoices') IS NOT NULL AND v_has_i_master_file_id THEN
+            'LEFT JOIN finance.invoices i ON i.master_file_id = mf.master_file_id'
+        ELSE
+            'LEFT JOIN finance.invoices i ON 1 = 0'
     END;
 
     EXECUTE format($view$
@@ -1586,16 +2148,19 @@ BEGIN
         SELECT
             %s AS reporting_month,
             COUNT(*) AS new_cases,
-            SUM(i.total_amount) AS revenue,
-            SUM(i.amount_paid) AS payments,
-            SUM(i.outstanding_balance) AS outstanding
+            %s,
+            %s,
+            %s
         FROM master.master_files mf
-        LEFT JOIN finance.invoices i
-            ON i.master_file_id = mf.master_file_id
+        %s
         GROUP BY %s
         ORDER BY reporting_month
     $view$,
         v_date_opened_expr,
+        v_revenue_expr,
+        v_payments_expr,
+        v_outstanding_expr,
+        v_invoice_join,
         v_date_opened_expr
     );
 END;
@@ -1611,32 +2176,27 @@ IS 'Enterprise Business Intelligence';
 DO
 $$
 BEGIN
-    EXECUTE $view$
+    EXECUTE format($view$
         CREATE OR REPLACE VIEW dashboard.v_enterprise_summary AS
         SELECT
-            (SELECT COUNT(*) FROM security.users) AS users,
-            (SELECT COUNT(*) FROM attorney.attorneys) AS attorneys,
-            (SELECT COUNT(*) FROM expert.medical_experts) AS experts,
-            (SELECT COUNT(*) FROM claimant.claimants) AS claimants,
-            (SELECT COUNT(*) FROM master.master_files) AS master_files,
-            (SELECT COUNT(*) FROM finance.invoices) AS invoices,
-            (SELECT COUNT(*) FROM reports.reports) AS reports,
-            (SELECT COUNT(*) FROM documents.documents) AS documents
-    $view$;
-EXCEPTION
-    WHEN undefined_table THEN
-        EXECUTE $view$
-            CREATE OR REPLACE VIEW dashboard.v_enterprise_summary AS
-            SELECT
-                0::BIGINT AS users,
-                0::BIGINT AS attorneys,
-                0::BIGINT AS experts,
-                0::BIGINT AS claimants,
-                0::BIGINT AS master_files,
-                0::BIGINT AS invoices,
-                0::BIGINT AS reports,
-                0::BIGINT AS documents
-        $view$;
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s,
+            %s
+    $view$,
+        CASE WHEN to_regclass('security.users') IS NOT NULL THEN '(SELECT COUNT(*) FROM security.users) AS users' ELSE '0::BIGINT AS users' END,
+        CASE WHEN to_regclass('attorney.attorneys') IS NOT NULL THEN '(SELECT COUNT(*) FROM attorney.attorneys) AS attorneys' ELSE '0::BIGINT AS attorneys' END,
+        CASE WHEN to_regclass('expert.medical_experts') IS NOT NULL THEN '(SELECT COUNT(*) FROM expert.medical_experts) AS experts' ELSE '0::BIGINT AS experts' END,
+        CASE WHEN to_regclass('claimant.claimants') IS NOT NULL THEN '(SELECT COUNT(*) FROM claimant.claimants) AS claimants' ELSE '0::BIGINT AS claimants' END,
+        CASE WHEN to_regclass('master.master_files') IS NOT NULL THEN '(SELECT COUNT(*) FROM master.master_files) AS master_files' ELSE '0::BIGINT AS master_files' END,
+        CASE WHEN to_regclass('finance.invoices') IS NOT NULL THEN '(SELECT COUNT(*) FROM finance.invoices) AS invoices' ELSE '0::BIGINT AS invoices' END,
+        CASE WHEN to_regclass('reports.reports') IS NOT NULL THEN '(SELECT COUNT(*) FROM reports.reports) AS reports' ELSE '0::BIGINT AS reports' END,
+        CASE WHEN to_regclass('documents.documents') IS NOT NULL THEN '(SELECT COUNT(*) FROM documents.documents) AS documents' ELSE '0::BIGINT AS documents' END
+    );
 END;
 $$;
 
