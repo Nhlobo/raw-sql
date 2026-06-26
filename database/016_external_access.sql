@@ -8,7 +8,7 @@ FILE
 016_external_access.sql
 
 VERSION
-1.1 FIXED
+1.2 FIXED
 
 DESCRIPTION
 
@@ -19,6 +19,8 @@ This version is idempotent and safe to rerun.
 */
 
 BEGIN;
+
+CREATE SCHEMA IF NOT EXISTS external;
 
 CREATE TABLE IF NOT EXISTS external.portal_users
 (
