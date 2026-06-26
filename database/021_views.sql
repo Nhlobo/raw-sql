@@ -8,7 +8,7 @@ FILE
 021_views.sql
 
 VERSION
-3.1 FULLY HARDENED
+3.2 FULLY HARDENED
 
 DESCRIPTION
 
@@ -21,6 +21,7 @@ Cross-Module Reporting
 
 This rewrite avoids hard failures when optional schemas, tables, or columns do not exist.
 Column detection uses pg_attribute.
+Enum comparisons are cast to text before matching.
 ===============================================================================
 */
 
@@ -660,8 +661,8 @@ BEGIN
     v_contact_person_expr := CASE WHEN v_has_a_contact_person THEN 'a.contact_person AS contact_person' ELSE 'NULL::TEXT AS contact_person' END;
     v_company_name_groupby := CASE WHEN v_has_a_company_name THEN ', a.company_name' ELSE '' END;
     v_contact_person_groupby := CASE WHEN v_has_a_contact_person THEN ', a.contact_person' ELSE '' END;
-    v_status_open_expr := CASE WHEN v_has_mf_status THEN 'COUNT(DISTINCT CASE WHEN mf.status = ''Open'' THEN mf.master_file_id END) AS open_cases' ELSE '0::BIGINT AS open_cases' END;
-    v_status_closed_expr := CASE WHEN v_has_mf_status THEN 'COUNT(DISTINCT CASE WHEN mf.status = ''Closed'' THEN mf.master_file_id END) AS closed_cases' ELSE '0::BIGINT AS closed_cases' END;
+    v_status_open_expr := CASE WHEN v_has_mf_status THEN 'COUNT(DISTINCT CASE WHEN LOWER(mf.status::text) = ''open'' THEN mf.master_file_id END) AS open_cases' ELSE '0::BIGINT AS open_cases' END;
+    v_status_closed_expr := CASE WHEN v_has_mf_status THEN 'COUNT(DISTINCT CASE WHEN LOWER(mf.status::text) = ''closed'' THEN mf.master_file_id END) AS closed_cases' ELSE '0::BIGINT AS closed_cases' END;
     v_invoice_count_expr := CASE WHEN v_has_i_invoice_id THEN 'COUNT(DISTINCT i.invoice_id) AS invoices' ELSE '0::BIGINT AS invoices' END;
     v_total_billed_expr := CASE WHEN v_has_i_total_amount THEN 'COALESCE(SUM(i.total_amount), 0) AS total_billed' ELSE '0::NUMERIC AS total_billed' END;
     v_outstanding_balance_expr := CASE WHEN v_has_i_outstanding_balance THEN 'COALESCE(SUM(i.outstanding_balance), 0) AS outstanding_balance' ELSE '0::NUMERIC AS outstanding_balance' END;
@@ -876,8 +877,16 @@ BEGIN
     SELECT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'finance.invoices'::regclass AND attname = 'outstanding_balance' AND NOT attisdropped) INTO v_has_outstanding_balance;
     SELECT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'finance.invoices'::regclass AND attname = 'amount_paid' AND NOT attisdropped) INTO v_has_amount_paid;
 
-    v_outstanding_count_expr := CASE WHEN v_has_invoice_status THEN 'COUNT(*) FILTER (WHERE invoice_status = ''Outstanding'') AS outstanding_invoices' ELSE '0::BIGINT AS outstanding_invoices' END;
-    v_paid_count_expr := CASE WHEN v_has_invoice_status THEN 'COUNT(*) FILTER (WHERE invoice_status = ''Paid'') AS paid_invoices' ELSE '0::BIGINT AS paid_invoices' END;
+    v_outstanding_count_expr := CASE
+        WHEN v_has_invoice_status THEN 'COUNT(*) FILTER (WHERE LOWER(invoice_status::text) = ''outstanding'') AS outstanding_invoices'
+        ELSE '0::BIGINT AS outstanding_invoices'
+    END;
+
+    v_paid_count_expr := CASE
+        WHEN v_has_invoice_status THEN 'COUNT(*) FILTER (WHERE LOWER(invoice_status::text) = ''paid'') AS paid_invoices'
+        ELSE '0::BIGINT AS paid_invoices'
+    END;
+
     v_total_billed_expr := CASE WHEN v_has_total_amount THEN 'SUM(total_amount) AS total_billed' ELSE '0::NUMERIC AS total_billed' END;
     v_outstanding_sum_expr := CASE WHEN v_has_outstanding_balance THEN 'SUM(outstanding_balance) AS outstanding_balance' ELSE '0::NUMERIC AS outstanding_balance' END;
     v_total_received_expr := CASE WHEN v_has_amount_paid THEN 'SUM(amount_paid) AS total_received' ELSE '0::NUMERIC AS total_received' END;
@@ -1032,8 +1041,8 @@ BEGIN
 
     v_original_amount_expr := CASE WHEN v_has_original_amount THEN 'SUM(original_amount) AS original_amount' ELSE '0::NUMERIC AS original_amount' END;
     v_outstanding_amount_expr := CASE WHEN v_has_outstanding_amount THEN 'SUM(outstanding_amount) AS outstanding_amount' ELSE '0::NUMERIC AS outstanding_amount' END;
-    v_active_expr := CASE WHEN v_has_agreement_status THEN 'COUNT(*) FILTER (WHERE agreement_status = ''Active'') AS active_agreements' ELSE '0::BIGINT AS active_agreements' END;
-    v_completed_expr := CASE WHEN v_has_agreement_status THEN 'COUNT(*) FILTER (WHERE agreement_status = ''Completed'') AS completed_agreements' ELSE '0::BIGINT AS completed_agreements' END;
+    v_active_expr := CASE WHEN v_has_agreement_status THEN 'COUNT(*) FILTER (WHERE LOWER(agreement_status::text) = ''active'') AS active_agreements' ELSE '0::BIGINT AS active_agreements' END;
+    v_completed_expr := CASE WHEN v_has_agreement_status THEN 'COUNT(*) FILTER (WHERE LOWER(agreement_status::text) = ''completed'') AS completed_agreements' ELSE '0::BIGINT AS completed_agreements' END;
 
     EXECUTE format($view$
         CREATE OR REPLACE VIEW dashboard.v_aod_dashboard AS
@@ -1317,9 +1326,9 @@ BEGIN
 
     v_channel_expr := CASE WHEN v_has_notification_channel THEN 'notification_channel' ELSE 'NULL::TEXT AS notification_channel' END;
     v_status_expr := CASE WHEN v_has_queue_status THEN 'queue_status' ELSE 'NULL::TEXT AS queue_status' END;
-    v_high_priority_expr := CASE WHEN v_has_priority THEN 'COUNT(*) FILTER (WHERE priority = ''high'') AS high_priority' ELSE '0::BIGINT AS high_priority' END;
-    v_failed_expr := CASE WHEN v_has_queue_status THEN 'COUNT(*) FILTER (WHERE queue_status = ''failed'') AS failed_notifications' ELSE '0::BIGINT AS failed_notifications' END;
-    v_sent_expr := CASE WHEN v_has_queue_status THEN 'COUNT(*) FILTER (WHERE queue_status = ''sent'') AS delivered_notifications' ELSE '0::BIGINT AS delivered_notifications' END;
+    v_high_priority_expr := CASE WHEN v_has_priority THEN 'COUNT(*) FILTER (WHERE LOWER(priority::text) = ''high'') AS high_priority' ELSE '0::BIGINT AS high_priority' END;
+    v_failed_expr := CASE WHEN v_has_queue_status THEN 'COUNT(*) FILTER (WHERE LOWER(queue_status::text) = ''failed'') AS failed_notifications' ELSE '0::BIGINT AS failed_notifications' END;
+    v_sent_expr := CASE WHEN v_has_queue_status THEN 'COUNT(*) FILTER (WHERE LOWER(queue_status::text) = ''sent'') AS delivered_notifications' ELSE '0::BIGINT AS delivered_notifications' END;
     v_groupby_clause := CASE
         WHEN v_has_notification_channel AND v_has_queue_status THEN 'GROUP BY notification_channel, queue_status'
         WHEN v_has_notification_channel THEN 'GROUP BY notification_channel'
@@ -1381,8 +1390,8 @@ BEGIN
     SELECT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'external.portal_users'::regclass AND attname = 'account_status' AND NOT attisdropped) INTO v_has_account_status;
     SELECT EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'external.portal_users'::regclass AND attname = 'last_login' AND NOT attisdropped) INTO v_has_last_login;
 
-    v_active_expr := CASE WHEN v_has_account_status THEN 'COUNT(*) FILTER (WHERE account_status = ''Active'') AS active_users' ELSE '0::BIGINT AS active_users' END;
-    v_inactive_expr := CASE WHEN v_has_account_status THEN 'COUNT(*) FILTER (WHERE account_status = ''Inactive'') AS inactive_users' ELSE '0::BIGINT AS inactive_users' END;
+    v_active_expr := CASE WHEN v_has_account_status THEN 'COUNT(*) FILTER (WHERE LOWER(account_status::text) = ''active'') AS active_users' ELSE '0::BIGINT AS active_users' END;
+    v_inactive_expr := CASE WHEN v_has_account_status THEN 'COUNT(*) FILTER (WHERE LOWER(account_status::text) = ''inactive'') AS inactive_users' ELSE '0::BIGINT AS inactive_users' END;
     v_last_login_expr := CASE WHEN v_has_last_login THEN 'MAX(last_login) AS last_login' ELSE 'NULL::TIMESTAMP AS last_login' END;
     v_active_30_expr := CASE WHEN v_has_last_login THEN 'COUNT(*) FILTER (WHERE last_login >= CURRENT_DATE - INTERVAL ''30 days'') AS active_last_30_days' ELSE '0::BIGINT AS active_last_30_days' END;
 
