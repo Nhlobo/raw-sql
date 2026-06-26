@@ -8,7 +8,7 @@ FILE
 010_assessments.sql
 
 VERSION
-1.2 FIXED
+1.3 FIXED
 
 DESCRIPTION
 
@@ -26,8 +26,7 @@ CREATE TABLE IF NOT EXISTS assessment.assessments
         DEFAULT core.generate_uuid(),
 
     assessment_number VARCHAR(30)
-        NOT NULL UNIQUE
-        DEFAULT core.generate_assessment_number(),
+        NOT NULL UNIQUE,
 
     master_file_id UUID NOT NULL
         REFERENCES master.master_files(master_file_id),
@@ -55,33 +54,17 @@ CREATE TABLE IF NOT EXISTS assessment.assessments
     assessment_mode VARCHAR(50),
 
     scheduled_start TIMESTAMPTZ,
-
     scheduled_end TIMESTAMPTZ,
-
     actual_start TIMESTAMPTZ,
-
     actual_end TIMESTAMPTZ,
-
     duration_minutes INTEGER,
-
     report_due_date DATE,
-
-    report_completed BOOLEAN
-        DEFAULT FALSE,
-
-    requires_quality_review BOOLEAN
-        DEFAULT TRUE,
-
-    digitally_signed BOOLEAN
-        DEFAULT FALSE,
-
+    report_completed BOOLEAN DEFAULT FALSE,
+    requires_quality_review BOOLEAN DEFAULT TRUE,
+    digitally_signed BOOLEAN DEFAULT FALSE,
     created_by UUID,
-
-    created_at TIMESTAMPTZ
-        DEFAULT core.utc_now(),
-
-    updated_at TIMESTAMPTZ
-        DEFAULT core.utc_now()
+    created_at TIMESTAMPTZ DEFAULT core.utc_now(),
+    updated_at TIMESTAMPTZ DEFAULT core.utc_now()
 );
 
 COMMENT ON TABLE assessment.assessments
@@ -108,24 +91,14 @@ CREATE TABLE IF NOT EXISTS assessment.sessions
         REFERENCES assessment.assessments(assessment_id)
         ON DELETE CASCADE,
 
-    session_number INTEGER
-        NOT NULL,
-
+    session_number INTEGER NOT NULL,
     session_type VARCHAR(120),
-
     session_start TIMESTAMPTZ,
-
     session_end TIMESTAMPTZ,
-
     duration_minutes INTEGER,
-
-    completed BOOLEAN
-        DEFAULT FALSE,
-
+    completed BOOLEAN DEFAULT FALSE,
     session_notes TEXT,
-
-    created_at TIMESTAMPTZ
-        DEFAULT core.utc_now(),
+    created_at TIMESTAMPTZ DEFAULT core.utc_now(),
 
     UNIQUE (assessment_id, session_number)
 );
@@ -715,13 +688,9 @@ CREATE TABLE IF NOT EXISTS assessment.quality_reviews
         ON DELETE CASCADE,
 
     reviewer UUID,
-
     review_status VARCHAR(50),
-
     review_comments TEXT,
-
     corrections_required BOOLEAN DEFAULT FALSE,
-
     reviewed_at TIMESTAMPTZ DEFAULT core.utc_now()
 );
 
