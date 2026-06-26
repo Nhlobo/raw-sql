@@ -8,7 +8,7 @@ FILE
 007_master_files.sql
 
 VERSION
-1.1 FIXED
+1.2 FIXED
 
 DESCRIPTION
 
@@ -43,16 +43,16 @@ CREATE TABLE IF NOT EXISTS master.master_files
 
     claimant_id UUID,
 
-    case_type master.case_type
+    case_type VARCHAR(100)
         NOT NULL,
 
-    case_category master.case_category
+    case_category VARCHAR(100)
         NOT NULL,
 
     referral_source master.referral_source
         NOT NULL,
 
-    workflow_status master.workflow_status
+    workflow_status VARCHAR(50)
         NOT NULL DEFAULT 'new',
 
     case_priority master.case_priority
@@ -128,13 +128,13 @@ CREATE TABLE IF NOT EXISTS master.master_file_classification
         REFERENCES master.master_files(master_file_id)
         ON DELETE CASCADE,
 
-    accident_type master.accident_type,
+    accident_type VARCHAR(100),
 
-    injury_category master.injury_category,
+    injury_category VARCHAR(100),
 
-    litigation_stage master.litigation_stage,
+    litigation_stage VARCHAR(100),
 
-    liability_status master.liability_status,
+    liability_status VARCHAR(100),
 
     insurance_company VARCHAR(255),
 
@@ -205,9 +205,9 @@ CREATE TABLE IF NOT EXISTS master.master_file_status_history
         REFERENCES master.master_files(master_file_id)
         ON DELETE CASCADE,
 
-    previous_status master.workflow_status,
+    previous_status VARCHAR(50),
 
-    new_status master.workflow_status,
+    new_status VARCHAR(50),
 
     changed_by UUID,
 
@@ -486,7 +486,7 @@ CREATE TABLE IF NOT EXISTS master.workflow_tasks
     task_priority master.case_priority
         DEFAULT 'normal',
 
-    task_status master.workflow_status
+    task_status VARCHAR(50)
         DEFAULT 'new',
 
     estimated_minutes INTEGER,
@@ -767,7 +767,7 @@ CREATE TABLE IF NOT EXISTS master.case_participants
         REFERENCES master.master_files(master_file_id)
         ON DELETE CASCADE,
 
-    participant_type master.participant_type
+    participant_type VARCHAR(100)
         NOT NULL,
 
     reference_id UUID
