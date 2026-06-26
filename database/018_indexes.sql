@@ -8,15 +8,15 @@ FILE
 018_indexes.sql
 
 VERSION
-1.3 FIXED
+1.4 FIXED
 
 DESCRIPTION
 
 Enterprise Performance & Index Optimization Layer
 
 This version is safe to rerun and aligned to the rewritten schema.
-Fixed PostgreSQL expression-index immutability issues and enum-dependent
-partial index failure.
+Fixed PostgreSQL expression-index immutability issues, enum-dependent
+partial index failure, and timestamptz range index compatibility.
 ===============================================================================
 */
 
@@ -543,13 +543,13 @@ USING BRIN (started_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_timerange
 ON security.active_sessions
 USING GIST (
-    tsrange(login_at, expires_at)
+    tstzrange(login_at, expires_at)
 );
 
 CREATE INDEX IF NOT EXISTS idx_external_sessions_timerange
 ON external.portal_sessions
 USING GIST (
-    tsrange(login_time, expires_at)
+    tstzrange(login_time, expires_at)
 );
 
 -- =============================================================================
