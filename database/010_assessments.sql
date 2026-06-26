@@ -8,7 +8,7 @@ FILE
 010_assessments.sql
 
 VERSION
-1.3 FIXED
+1.4 FIXED
 
 DESCRIPTION
 
@@ -31,8 +31,7 @@ CREATE TABLE IF NOT EXISTS assessment.assessments
     master_file_id UUID NOT NULL
         REFERENCES master.master_files(master_file_id),
 
-    appointment_id UUID NOT NULL
-        REFERENCES appointment.appointments(appointment_id),
+    appointment_id UUID,
 
     claimant_id UUID NOT NULL
         REFERENCES claimant.claimants(claimant_id),
