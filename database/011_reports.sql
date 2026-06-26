@@ -8,33 +8,25 @@ FILE
 011_reports.sql
 
 VERSION
-1.0 FINAL
+1.1 FIXED
 
 DESCRIPTION
 
 Enterprise Report Management Engine
 
-This module manages the complete report lifecycle,
-from drafting through reviews, approvals,
-digital signing, publishing and secure distribution.
-
+This version is idempotent and safe to rerun.
 ===============================================================================
 */
 
 BEGIN;
 
--- =============================================================================
--- REPORT REGISTER
--- =============================================================================
-
-CREATE TABLE reports.reports
+CREATE TABLE IF NOT EXISTS reports.reports
 (
     report_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
     report_number VARCHAR(30)
-        NOT NULL UNIQUE
-        DEFAULT core.generate_report_number(),
+        NOT NULL UNIQUE,
 
     assessment_id UUID NOT NULL
         REFERENCES assessment.assessments(assessment_id),
@@ -48,13 +40,13 @@ CREATE TABLE reports.reports
     medical_expert_id UUID NOT NULL
         REFERENCES expert.medical_experts(medical_expert_id),
 
-    report_type reports.report_type
+    report_type VARCHAR(100)
         NOT NULL,
 
-    report_status reports.report_status
+    report_status VARCHAR(50)
         DEFAULT 'draft',
 
-    confidentiality_level security.classification_level
+    confidentiality_level VARCHAR(50)
         DEFAULT 'confidential',
 
     report_title VARCHAR(300)
@@ -89,23 +81,19 @@ CREATE TABLE reports.reports
 COMMENT ON TABLE reports.reports
 IS 'Enterprise report register';
 
-CREATE INDEX idx_reports_master
+CREATE INDEX IF NOT EXISTS idx_reports_master
 ON reports.reports(master_file_id);
 
-CREATE INDEX idx_reports_claimant
+CREATE INDEX IF NOT EXISTS idx_reports_claimant
 ON reports.reports(claimant_id);
 
-CREATE INDEX idx_reports_status
+CREATE INDEX IF NOT EXISTS idx_reports_status
 ON reports.reports(report_status);
 
-CREATE INDEX idx_reports_expert
+CREATE INDEX IF NOT EXISTS idx_reports_expert
 ON reports.reports(medical_expert_id);
 
--- =============================================================================
--- REPORT TEMPLATES
--- =============================================================================
-
-CREATE TABLE reports.templates
+CREATE TABLE IF NOT EXISTS reports.templates
 (
     template_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -113,7 +101,7 @@ CREATE TABLE reports.templates
     template_name VARCHAR(255)
         NOT NULL,
 
-    report_type reports.report_type,
+    report_type VARCHAR(100),
 
     template_version INTEGER
         DEFAULT 1,
@@ -138,11 +126,7 @@ CREATE TABLE reports.templates
 COMMENT ON TABLE reports.templates
 IS 'Report templates';
 
--- =============================================================================
--- REPORT DRAFTS
--- =============================================================================
-
-CREATE TABLE reports.drafts
+CREATE TABLE IF NOT EXISTS reports.drafts
 (
     draft_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -172,11 +156,7 @@ CREATE TABLE reports.drafts
 COMMENT ON TABLE reports.drafts
 IS 'Draft report versions';
 
--- =============================================================================
--- REPORT SECTIONS
--- =============================================================================
-
-CREATE TABLE reports.sections
+CREATE TABLE IF NOT EXISTS reports.sections
 (
     report_section_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -204,11 +184,7 @@ CREATE TABLE reports.sections
 COMMENT ON TABLE reports.sections
 IS 'Individual report sections';
 
--- =============================================================================
--- REPORT VERSION HISTORY
--- =============================================================================
-
-CREATE TABLE reports.version_history
+CREATE TABLE IF NOT EXISTS reports.version_history
 (
     version_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -235,11 +211,7 @@ CREATE TABLE reports.version_history
 COMMENT ON TABLE reports.version_history
 IS 'Version history';
 
--- =============================================================================
--- REPORT ATTACHMENTS
--- =============================================================================
-
-CREATE TABLE reports.attachments
+CREATE TABLE IF NOT EXISTS reports.attachments
 (
     report_attachment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -266,11 +238,7 @@ CREATE TABLE reports.attachments
 COMMENT ON TABLE reports.attachments
 IS 'Attachments included in reports';
 
--- =============================================================================
--- REPORT REFERENCES
--- =============================================================================
-
-CREATE TABLE reports.references
+CREATE TABLE IF NOT EXISTS reports.references
 (
     reference_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -298,11 +266,7 @@ CREATE TABLE reports.references
 COMMENT ON TABLE reports.references
 IS 'Medical and legal references';
 
--- =============================================================================
--- REPORT FOOTNOTES
--- =============================================================================
-
-CREATE TABLE reports.footnotes
+CREATE TABLE IF NOT EXISTS reports.footnotes
 (
     footnote_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -322,11 +286,7 @@ CREATE TABLE reports.footnotes
 COMMENT ON TABLE reports.footnotes
 IS 'Report footnotes';
 
--- =============================================================================
--- REPORT WATERMARK SETTINGS
--- =============================================================================
-
-CREATE TABLE reports.watermarks
+CREATE TABLE IF NOT EXISTS reports.watermarks
 (
     watermark_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -350,11 +310,7 @@ CREATE TABLE reports.watermarks
 COMMENT ON TABLE reports.watermarks
 IS 'PDF watermark settings';
 
--- =============================================================================
--- INTERNAL REVIEW
--- =============================================================================
-
-CREATE TABLE reports.internal_reviews
+CREATE TABLE IF NOT EXISTS reports.internal_reviews
 (
     internal_review_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -365,7 +321,7 @@ CREATE TABLE reports.internal_reviews
 
     reviewer_id UUID NOT NULL,
 
-    review_status reports.review_status
+    review_status VARCHAR(50)
         DEFAULT 'pending',
 
     priority master.case_priority
@@ -390,14 +346,10 @@ CREATE TABLE reports.internal_reviews
 COMMENT ON TABLE reports.internal_reviews
 IS 'Internal report review workflow';
 
-CREATE INDEX idx_internal_review_report
+CREATE INDEX IF NOT EXISTS idx_internal_review_report
 ON reports.internal_reviews(report_id);
 
--- =============================================================================
--- MEDICAL REVIEW
--- =============================================================================
-
-CREATE TABLE reports.medical_reviews
+CREATE TABLE IF NOT EXISTS reports.medical_reviews
 (
     medical_review_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -409,7 +361,7 @@ CREATE TABLE reports.medical_reviews
     reviewing_expert UUID
         REFERENCES expert.medical_experts(medical_expert_id),
 
-    review_status reports.review_status
+    review_status VARCHAR(50)
         DEFAULT 'pending',
 
     clinical_accuracy BOOLEAN,
@@ -431,11 +383,7 @@ CREATE TABLE reports.medical_reviews
 COMMENT ON TABLE reports.medical_reviews
 IS 'Medical peer review';
 
--- =============================================================================
--- LEGAL REVIEW
--- =============================================================================
-
-CREATE TABLE reports.legal_reviews
+CREATE TABLE IF NOT EXISTS reports.legal_reviews
 (
     legal_review_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -447,7 +395,7 @@ CREATE TABLE reports.legal_reviews
     attorney_id UUID
         REFERENCES attorney.attorneys(attorney_id),
 
-    review_status reports.review_status
+    review_status VARCHAR(50)
         DEFAULT 'pending',
 
     legal_compliance BOOLEAN,
@@ -467,11 +415,7 @@ CREATE TABLE reports.legal_reviews
 COMMENT ON TABLE reports.legal_reviews
 IS 'Legal compliance review';
 
--- =============================================================================
--- REVIEW COMMENTS
--- =============================================================================
-
-CREATE TABLE reports.review_comments
+CREATE TABLE IF NOT EXISTS reports.review_comments
 (
     review_comment_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -490,7 +434,7 @@ CREATE TABLE reports.review_comments
 
     comment TEXT,
 
-    severity reports.comment_severity,
+    severity VARCHAR(50),
 
     resolved BOOLEAN
         DEFAULT FALSE,
@@ -508,11 +452,7 @@ CREATE TABLE reports.review_comments
 COMMENT ON TABLE reports.review_comments
 IS 'Review comments';
 
--- =============================================================================
--- APPROVAL WORKFLOW
--- =============================================================================
-
-CREATE TABLE reports.approval_workflow
+CREATE TABLE IF NOT EXISTS reports.approval_workflow
 (
     approval_workflow_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -527,7 +467,7 @@ CREATE TABLE reports.approval_workflow
 
     approval_role VARCHAR(100),
 
-    approval_status reports.approval_status
+    approval_status VARCHAR(50)
         DEFAULT 'pending',
 
     approval_notes TEXT,
@@ -540,11 +480,7 @@ CREATE TABLE reports.approval_workflow
 COMMENT ON TABLE reports.approval_workflow
 IS 'Report approval workflow';
 
--- =============================================================================
--- DIGITAL SIGNATURES
--- =============================================================================
-
-CREATE TABLE reports.digital_signatures
+CREATE TABLE IF NOT EXISTS reports.digital_signatures
 (
     report_signature_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -573,11 +509,7 @@ CREATE TABLE reports.digital_signatures
 COMMENT ON TABLE reports.digital_signatures
 IS 'Digital report signatures';
 
--- =============================================================================
--- PDF GENERATION QUEUE
--- =============================================================================
-
-CREATE TABLE reports.pdf_generation_queue
+CREATE TABLE IF NOT EXISTS reports.pdf_generation_queue
 (
     pdf_generation_queue_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -586,7 +518,7 @@ CREATE TABLE reports.pdf_generation_queue
         REFERENCES reports.reports(report_id)
         ON DELETE CASCADE,
 
-    generation_status reports.generation_status
+    generation_status VARCHAR(50)
         DEFAULT 'queued',
 
     requested_by UUID,
@@ -607,14 +539,10 @@ CREATE TABLE reports.pdf_generation_queue
 COMMENT ON TABLE reports.pdf_generation_queue
 IS 'PDF generation queue';
 
-CREATE INDEX idx_pdf_queue_status
+CREATE INDEX IF NOT EXISTS idx_pdf_queue_status
 ON reports.pdf_generation_queue(generation_status);
 
--- =============================================================================
--- REPORT PUBLISHING
--- =============================================================================
-
-CREATE TABLE reports.publications
+CREATE TABLE IF NOT EXISTS reports.publications
 (
     publication_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -623,7 +551,7 @@ CREATE TABLE reports.publications
         REFERENCES reports.reports(report_id)
         ON DELETE CASCADE,
 
-    publication_status reports.publication_status
+    publication_status VARCHAR(50)
         DEFAULT 'pending',
 
     publication_date TIMESTAMPTZ,
@@ -638,11 +566,7 @@ CREATE TABLE reports.publications
 COMMENT ON TABLE reports.publications
 IS 'Published reports';
 
--- =============================================================================
--- SECURE DISTRIBUTION
--- =============================================================================
-
-CREATE TABLE reports.distribution
+CREATE TABLE IF NOT EXISTS reports.distribution
 (
     distribution_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -674,11 +598,7 @@ CREATE TABLE reports.distribution
 COMMENT ON TABLE reports.distribution
 IS 'Secure report distribution';
 
--- =============================================================================
--- DOWNLOAD TRACKING
--- =============================================================================
-
-CREATE TABLE reports.download_tracking
+CREATE TABLE IF NOT EXISTS reports.download_tracking
 (
     download_tracking_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -703,11 +623,7 @@ CREATE TABLE reports.download_tracking
 COMMENT ON TABLE reports.download_tracking
 IS 'Report download audit';
 
--- =============================================================================
--- EMAIL DELIVERY QUEUE
--- =============================================================================
-
-CREATE TABLE reports.email_delivery_queue
+CREATE TABLE IF NOT EXISTS reports.email_delivery_queue
 (
     email_delivery_queue_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -720,7 +636,7 @@ CREATE TABLE reports.email_delivery_queue
 
     subject VARCHAR(255),
 
-    delivery_status notifications.delivery_status
+    delivery_status VARCHAR(50)
         DEFAULT 'queued',
 
     retry_count INTEGER
@@ -737,11 +653,7 @@ CREATE TABLE reports.email_delivery_queue
 COMMENT ON TABLE reports.email_delivery_queue
 IS 'Email delivery queue';
 
--- =============================================================================
--- REPORT TIMELINE
--- =============================================================================
-
-CREATE TABLE reports.timeline
+CREATE TABLE IF NOT EXISTS reports.timeline
 (
     timeline_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -765,11 +677,7 @@ CREATE TABLE reports.timeline
 COMMENT ON TABLE reports.timeline
 IS 'Report lifecycle timeline';
 
--- =============================================================================
--- REPORT ANALYTICS
--- =============================================================================
-
-CREATE TABLE reports.analytics
+CREATE TABLE IF NOT EXISTS reports.analytics
 (
     report_analytics_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -801,14 +709,10 @@ CREATE TABLE reports.analytics
 COMMENT ON TABLE reports.analytics
 IS 'Enterprise report analytics';
 
-CREATE INDEX idx_report_analytics_report
+CREATE INDEX IF NOT EXISTS idx_report_analytics_report
 ON reports.analytics(report_id);
 
--- =============================================================================
--- REPORT KPI METRICS
--- =============================================================================
-
-CREATE TABLE reports.kpi_metrics
+CREATE TABLE IF NOT EXISTS reports.kpi_metrics
 (
     report_kpi_metric_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -849,11 +753,7 @@ CREATE TABLE reports.kpi_metrics
 COMMENT ON TABLE reports.kpi_metrics
 IS 'Enterprise reporting KPI metrics';
 
--- =============================================================================
--- REPORT DASHBOARD SUMMARY
--- =============================================================================
-
-CREATE TABLE reports.dashboard_summary
+CREATE TABLE IF NOT EXISTS reports.dashboard_summary
 (
     dashboard_summary_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -896,11 +796,7 @@ CREATE TABLE reports.dashboard_summary
 COMMENT ON TABLE reports.dashboard_summary
 IS 'Enterprise report dashboard';
 
--- =============================================================================
--- REPORT ARCHIVE
--- =============================================================================
-
-CREATE TABLE reports.archive
+CREATE TABLE IF NOT EXISTS reports.archive
 (
     archive_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -926,16 +822,12 @@ CREATE TABLE reports.archive
 COMMENT ON TABLE reports.archive
 IS 'Long-term archived reports';
 
--- =============================================================================
--- RETENTION POLICIES
--- =============================================================================
-
-CREATE TABLE reports.retention_policies
+CREATE TABLE IF NOT EXISTS reports.retention_policies
 (
     retention_policy_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
 
-    report_type reports.report_type,
+    report_type VARCHAR(100),
 
     retention_years INTEGER
         NOT NULL,
@@ -958,11 +850,7 @@ CREATE TABLE reports.retention_policies
 COMMENT ON TABLE reports.retention_policies
 IS 'Document retention policies';
 
--- =============================================================================
--- LEGAL HOLDS
--- =============================================================================
-
-CREATE TABLE reports.legal_holds
+CREATE TABLE IF NOT EXISTS reports.legal_holds
 (
     legal_hold_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -991,11 +879,7 @@ CREATE TABLE reports.legal_holds
 COMMENT ON TABLE reports.legal_holds
 IS 'Legal hold records';
 
--- =============================================================================
--- REPORT EXPORT HISTORY
--- =============================================================================
-
-CREATE TABLE reports.export_history
+CREATE TABLE IF NOT EXISTS reports.export_history
 (
     export_history_id UUID PRIMARY KEY
         DEFAULT core.generate_uuid(),
@@ -1019,112 +903,64 @@ CREATE TABLE reports.export_history
 COMMENT ON TABLE reports.export_history
 IS 'Report export history';
 
--- =============================================================================
--- ENTERPRISE REPORT DIRECTORY
--- =============================================================================
-
-CREATE VIEW reports.v_report_directory
+CREATE OR REPLACE VIEW reports.v_report_directory
 AS
 SELECT
-
-r.report_id,
-r.report_number,
-r.report_title,
-r.report_type,
-r.report_status,
-r.report_version,
-
-mf.master_file_number,
-
-c.claimant_number,
-c.first_name,
-c.last_name,
-
-e.expert_number,
-e.first_name AS expert_first_name,
-e.last_name AS expert_last_name,
-
-d.finalised,
-d.publication_complete,
-
-a.total_downloads,
-a.total_views
-
+    r.report_id,
+    r.report_number,
+    r.report_title,
+    r.report_type,
+    r.report_status,
+    r.report_version,
+    mf.master_file_number,
+    c.claimant_number,
+    c.first_name,
+    c.last_name,
+    e.expert_number,
+    e.first_name AS expert_first_name,
+    e.last_name AS expert_last_name,
+    d.finalised,
+    d.publication_complete,
+    a.total_downloads,
+    a.total_views
 FROM reports.reports r
-
 LEFT JOIN master.master_files mf
-ON mf.master_file_id=r.master_file_id
-
+    ON mf.master_file_id = r.master_file_id
 LEFT JOIN claimant.claimants c
-ON c.claimant_id=r.claimant_id
-
+    ON c.claimant_id = r.claimant_id
 LEFT JOIN expert.medical_experts e
-ON e.medical_expert_id=r.medical_expert_id
-
+    ON e.medical_expert_id = r.medical_expert_id
 LEFT JOIN reports.dashboard_summary d
-ON d.report_id=r.report_id
-
+    ON d.report_id = r.report_id
 LEFT JOIN reports.analytics a
-ON a.report_id=r.report_id;
+    ON a.report_id = r.report_id;
 
 COMMENT ON VIEW reports.v_report_directory
 IS 'Enterprise report directory';
 
--- =============================================================================
--- EXECUTIVE REPORT DASHBOARD
--- =============================================================================
-
-CREATE VIEW reports.v_executive_dashboard
+CREATE OR REPLACE VIEW reports.v_executive_dashboard
 AS
 SELECT
-
-COUNT(*) AS total_reports,
-
-COUNT(*) FILTER
-(
-WHERE report_status='draft'
-) AS drafts,
-
-COUNT(*) FILTER
-(
-WHERE report_status='review'
-) AS under_review,
-
-COUNT(*) FILTER
-(
-WHERE report_status='approved'
-) AS approved,
-
-COUNT(*) FILTER
-(
-WHERE report_status='published'
-) AS published,
-
-COUNT(*) FILTER
-(
-WHERE report_status='archived'
-) AS archived
-
+    COUNT(*) AS total_reports,
+    COUNT(*) FILTER (WHERE report_status='draft') AS drafts,
+    COUNT(*) FILTER (WHERE report_status='review') AS under_review,
+    COUNT(*) FILTER (WHERE report_status='approved') AS approved,
+    COUNT(*) FILTER (WHERE report_status='published') AS published,
+    COUNT(*) FILTER (WHERE report_status='archived') AS archived
 FROM reports.reports;
 
 COMMENT ON VIEW reports.v_executive_dashboard
 IS 'Executive reporting dashboard';
 
--- =============================================================================
--- DEPLOYMENT VERIFICATION
--- =============================================================================
-
 DO
 $$
 BEGIN
-
-RAISE NOTICE '';
-RAISE NOTICE '===========================================================';
-RAISE NOTICE 'Enterprise Report Management Engine Installed Successfully';
-RAISE NOTICE '011_reports.sql COMPLETED';
-RAISE NOTICE '===========================================================';
-RAISE NOTICE '';
-
+    RAISE NOTICE '';
+    RAISE NOTICE '===========================================================';
+    RAISE NOTICE 'Enterprise Report Management Engine Installed Successfully';
+    RAISE NOTICE '011_reports.sql COMPLETED';
+    RAISE NOTICE '===========================================================';
+    RAISE NOTICE '';
 END;
 $$;
 
