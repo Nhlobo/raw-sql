@@ -5,24 +5,27 @@ KUTLWANO & ASSOCIATE (PTY) LTD
 Enterprise Medico-Legal Platform
 
 FILE
-023_seed_super_admin.sql
+026_seed_super_admin.sql
 
 VERSION
-1.0 FINAL
+2.0 FINAL
 
 DESCRIPTION
 
 Seeds the initial super admin directly in SQL.
-Run this once, then disable app bootstrap.
+
+This version temporarily disables RLS and user triggers on the target tables
+so bootstrap is not blocked by RLS or audit trigger issues.
 ===============================================================================
 */
 
 BEGIN;
 
--- Temporarily disable RLS just for this seed transaction if you are using a privileged role.
--- Remove these two lines if your DB role is not allowed to do this.
 ALTER TABLE security.users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE security.user_profiles DISABLE ROW LEVEL SECURITY;
+
+ALTER TABLE security.users DISABLE TRIGGER USER;
+ALTER TABLE security.user_profiles DISABLE TRIGGER USER;
 
 WITH inserted_user AS (
     INSERT INTO security.users
@@ -44,7 +47,7 @@ WITH inserted_user AS (
     SELECT
         gen_random_uuid(),
         'admin',
-        'admin@kutlwanoassociate.com',
+        'admin@example.com',
         '$2a$10$7EqJtq98hPqEX7fNZaFWoOePa8JwLq.eQ.v9wKEXt7Yz9I9FCPi8K',
         'active',
         'internal',
@@ -58,7 +61,7 @@ WITH inserted_user AS (
     WHERE NOT EXISTS (
         SELECT 1
         FROM security.users
-        WHERE email = 'admin@kutlwanoassociate.com'
+        WHERE email = 'admin@example.com'
            OR username = 'admin'
            OR primary_role = 'super_admin'
     )
@@ -77,6 +80,9 @@ SELECT
     'System',
     'Administrator'
 FROM inserted_user;
+
+ALTER TABLE security.users ENABLE TRIGGER USER;
+ALTER TABLE security.user_profiles ENABLE TRIGGER USER;
 
 ALTER TABLE security.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE security.users FORCE ROW LEVEL SECURITY;
