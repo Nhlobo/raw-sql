@@ -30,7 +30,8 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .httpBasic(httpBasic -> httpBasic.disable())
-            .formLogin(form -> form.disable());
+            .formLogin(form -> form.disable())
+            .logout(logout -> logout.disable());
 
         return http.build();
     }
