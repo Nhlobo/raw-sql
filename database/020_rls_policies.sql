@@ -8,15 +8,15 @@ FILE
 020_rls_policies.sql
 
 VERSION
-1.1 FIXED
+1.2 FIXED
 
 DESCRIPTION
 
 Enterprise Row Level Security (RLS)
 
 Safe, rerunnable RLS deployment.
-This rewrite avoids hard failures when optional schemas/tables do not exist
-and makes policy creation idempotent.
+This rewrite avoids hard failures when optional schemas/tables/columns do not
+exist and makes policy creation idempotent.
 ===============================================================================
 */
 
@@ -112,10 +112,6 @@ $$;
 COMMENT ON FUNCTION security.validate_rls_configuration()
 IS 'Validate enterprise RLS configuration';
 
--- =============================================================================
--- RLS POLICY INVENTORY
--- =============================================================================
-
 CREATE OR REPLACE VIEW security.v_rls_policies
 AS
 SELECT
@@ -131,10 +127,6 @@ ORDER BY schemaname, tablename, policyname;
 
 COMMENT ON VIEW security.v_rls_policies
 IS 'Enterprise RLS policy inventory';
-
--- =============================================================================
--- RLS STATUS VIEW
--- =============================================================================
 
 CREATE OR REPLACE VIEW security.v_rls_status
 AS
@@ -154,7 +146,7 @@ COMMENT ON VIEW security.v_rls_status
 IS 'Enterprise RLS status dashboard';
 
 -- =============================================================================
--- CORE RLS TABLES
+-- ENABLE / FORCE RLS ON EXISTING TABLES
 -- =============================================================================
 
 DO
@@ -229,16 +221,7 @@ BEGIN
         EXECUTE 'ALTER TABLE audit.audit_events ENABLE ROW LEVEL SECURITY';
         EXECUTE 'ALTER TABLE audit.audit_events FORCE ROW LEVEL SECURITY';
     END IF;
-END;
-$$;
 
--- =============================================================================
--- OPTIONAL RLS TABLES
--- =============================================================================
-
-DO
-$$
-BEGIN
     IF to_regclass('appointments.appointments') IS NOT NULL THEN
         EXECUTE 'ALTER TABLE appointments.appointments ENABLE ROW LEVEL SECURITY';
         EXECUTE 'ALTER TABLE appointments.appointments FORCE ROW LEVEL SECURITY';
@@ -351,8 +334,7 @@ BEGIN
             ON master.master_files
             FOR SELECT
             USING (
-                assigned_to = security.current_user_id()
-                OR created_by = security.current_user_id()
+                created_by = security.current_user_id()
             )
         ';
 
@@ -373,18 +355,23 @@ BEGIN
             ON master.master_files
             FOR UPDATE
             USING (
-                assigned_to = security.current_user_id()
-                OR created_by = security.current_user_id()
+                created_by = security.current_user_id()
                 OR security.is_admin()
             )
             WITH CHECK (
-                assigned_to = security.current_user_id()
-                OR created_by = security.current_user_id()
+                created_by = security.current_user_id()
                 OR security.is_admin()
             )
         ';
 
-        IF to_regclass('attorney.attorneys') IS NOT NULL THEN
+        IF to_regclass('attorney.attorneys') IS NOT NULL
+           AND EXISTS (
+               SELECT 1
+               FROM information_schema.columns
+               WHERE table_schema = 'attorney'
+                 AND table_name = 'attorneys'
+                 AND column_name = 'linked_portal_user'
+           ) THEN
             EXECUTE 'DROP POLICY IF EXISTS policy_attorney_master ON master.master_files';
             EXECUTE '
                 CREATE POLICY policy_attorney_master
@@ -401,7 +388,14 @@ BEGIN
             ';
         END IF;
 
-        IF to_regclass('external.portal_users') IS NOT NULL THEN
+        IF to_regclass('external.portal_users') IS NOT NULL
+           AND EXISTS (
+               SELECT 1
+               FROM information_schema.columns
+               WHERE table_schema = 'external'
+                 AND table_name = 'portal_users'
+                 AND column_name = 'claimant_id'
+           ) THEN
             EXECUTE 'DROP POLICY IF EXISTS policy_claimant_master_files ON master.master_files';
             EXECUTE '
                 CREATE POLICY policy_claimant_master_files
@@ -429,41 +423,49 @@ BEGIN
             WITH CHECK (security.is_admin())
         ';
 
-        EXECUTE 'DROP POLICY IF EXISTS policy_internal_documents ON documents.documents';
-        EXECUTE '
-            CREATE POLICY policy_internal_documents
-            ON documents.documents
-            FOR SELECT
-            USING (
-                uploaded_by = security.current_user_id()
-            )
-        ';
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'documents'
+              AND table_name = 'documents'
+              AND column_name = 'uploaded_by'
+        ) THEN
+            EXECUTE 'DROP POLICY IF EXISTS policy_internal_documents ON documents.documents';
+            EXECUTE '
+                CREATE POLICY policy_internal_documents
+                ON documents.documents
+                FOR SELECT
+                USING (
+                    uploaded_by = security.current_user_id()
+                )
+            ';
 
-        EXECUTE 'DROP POLICY IF EXISTS policy_document_insert ON documents.documents';
-        EXECUTE '
-            CREATE POLICY policy_document_insert
-            ON documents.documents
-            FOR INSERT
-            WITH CHECK (
-                uploaded_by = security.current_user_id()
-                OR security.is_admin()
-            )
-        ';
+            EXECUTE 'DROP POLICY IF EXISTS policy_document_insert ON documents.documents';
+            EXECUTE '
+                CREATE POLICY policy_document_insert
+                ON documents.documents
+                FOR INSERT
+                WITH CHECK (
+                    uploaded_by = security.current_user_id()
+                    OR security.is_admin()
+                )
+            ';
 
-        EXECUTE 'DROP POLICY IF EXISTS policy_document_update ON documents.documents';
-        EXECUTE '
-            CREATE POLICY policy_document_update
-            ON documents.documents
-            FOR UPDATE
-            USING (
-                uploaded_by = security.current_user_id()
-                OR security.is_admin()
-            )
-            WITH CHECK (
-                uploaded_by = security.current_user_id()
-                OR security.is_admin()
-            )
-        ';
+            EXECUTE 'DROP POLICY IF EXISTS policy_document_update ON documents.documents';
+            EXECUTE '
+                CREATE POLICY policy_document_update
+                ON documents.documents
+                FOR UPDATE
+                USING (
+                    uploaded_by = security.current_user_id()
+                    OR security.is_admin()
+                )
+                WITH CHECK (
+                    uploaded_by = security.current_user_id()
+                    OR security.is_admin()
+                )
+            ';
+        END IF;
 
         EXECUTE 'DROP POLICY IF EXISTS policy_document_delete ON documents.documents';
         EXECUTE '
@@ -472,29 +474,6 @@ BEGIN
             FOR DELETE
             USING (security.is_admin())
         ';
-
-        IF to_regclass('assessment.assessments') IS NOT NULL
-           AND to_regclass('expert.medical_experts') IS NOT NULL THEN
-            EXECUTE 'DROP POLICY IF EXISTS policy_medical_expert_documents ON documents.documents';
-            EXECUTE '
-                CREATE POLICY policy_medical_expert_documents
-                ON documents.documents
-                FOR SELECT
-                USING (
-                    assessment_id IN
-                    (
-                        SELECT assessment_id
-                        FROM assessment.assessments
-                        WHERE expert_id IN
-                        (
-                            SELECT medical_expert_id
-                            FROM expert.medical_experts
-                            WHERE linked_portal_user = security.current_user_id()
-                        )
-                    )
-                )
-            ';
-        END IF;
     END IF;
 
     IF to_regclass('reports.reports') IS NOT NULL THEN
@@ -507,18 +486,33 @@ BEGIN
             WITH CHECK (security.is_admin())
         ';
 
-        EXECUTE 'DROP POLICY IF EXISTS policy_internal_reports ON reports.reports';
-        EXECUTE '
-            CREATE POLICY policy_internal_reports
-            ON reports.reports
-            FOR SELECT
-            USING (
-                author_id = security.current_user_id()
-            )
-        ';
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'reports'
+              AND table_name = 'reports'
+              AND column_name = 'author_id'
+        ) THEN
+            EXECUTE 'DROP POLICY IF EXISTS policy_internal_reports ON reports.reports';
+            EXECUTE '
+                CREATE POLICY policy_internal_reports
+                ON reports.reports
+                FOR SELECT
+                USING (
+                    author_id = security.current_user_id()
+                )
+            ';
+        END IF;
 
         IF to_regclass('master.master_files') IS NOT NULL
-           AND to_regclass('attorney.attorneys') IS NOT NULL THEN
+           AND to_regclass('attorney.attorneys') IS NOT NULL
+           AND EXISTS (
+               SELECT 1
+               FROM information_schema.columns
+               WHERE table_schema = 'attorney'
+                 AND table_name = 'attorneys'
+                 AND column_name = 'linked_portal_user'
+           ) THEN
             EXECUTE 'DROP POLICY IF EXISTS policy_attorney_reports ON reports.reports';
             EXECUTE '
                 CREATE POLICY policy_attorney_reports
@@ -540,31 +534,15 @@ BEGIN
             ';
         END IF;
 
-        IF to_regclass('assessment.assessments') IS NOT NULL
-           AND to_regclass('expert.medical_experts') IS NOT NULL THEN
-            EXECUTE 'DROP POLICY IF EXISTS policy_medical_expert_reports ON reports.reports';
-            EXECUTE '
-                CREATE POLICY policy_medical_expert_reports
-                ON reports.reports
-                FOR SELECT
-                USING (
-                    assessment_id IN
-                    (
-                        SELECT assessment_id
-                        FROM assessment.assessments
-                        WHERE expert_id IN
-                        (
-                            SELECT medical_expert_id
-                            FROM expert.medical_experts
-                            WHERE linked_portal_user = security.current_user_id()
-                        )
-                    )
-                )
-            ';
-        END IF;
-
         IF to_regclass('master.master_files') IS NOT NULL
-           AND to_regclass('external.portal_users') IS NOT NULL THEN
+           AND to_regclass('external.portal_users') IS NOT NULL
+           AND EXISTS (
+               SELECT 1
+               FROM information_schema.columns
+               WHERE table_schema = 'external'
+                 AND table_name = 'portal_users'
+                 AND column_name = 'claimant_id'
+           ) THEN
             EXECUTE 'DROP POLICY IF EXISTS policy_claimant_reports ON reports.reports';
             EXECUTE '
                 CREATE POLICY policy_claimant_reports
@@ -654,7 +632,14 @@ BEGIN
     END IF;
 
     IF to_regclass('claimant.claimants') IS NOT NULL
-       AND to_regclass('external.portal_users') IS NOT NULL THEN
+       AND to_regclass('external.portal_users') IS NOT NULL
+       AND EXISTS (
+           SELECT 1
+           FROM information_schema.columns
+           WHERE table_schema = 'external'
+             AND table_name = 'portal_users'
+             AND column_name = 'claimant_id'
+       ) THEN
         EXECUTE 'DROP POLICY IF EXISTS policy_claimant_profile ON claimant.claimants';
         EXECUTE '
             CREATE POLICY policy_claimant_profile
@@ -672,30 +657,20 @@ BEGIN
     END IF;
 
     IF to_regclass('assessment.assessments') IS NOT NULL THEN
-        EXECUTE 'DROP POLICY IF EXISTS policy_assessments_internal ON assessment.assessments';
-        EXECUTE '
-            CREATE POLICY policy_assessments_internal
-            ON assessment.assessments
-            FOR SELECT
-            USING (
-                assigned_to = security.current_user_id()
-                OR created_by = security.current_user_id()
-            )
-        ';
-
-        IF to_regclass('expert.medical_experts') IS NOT NULL THEN
-            EXECUTE 'DROP POLICY IF EXISTS policy_medical_expert_assessments ON assessment.assessments';
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'assessment'
+              AND table_name = 'assessments'
+              AND column_name = 'created_by'
+        ) THEN
+            EXECUTE 'DROP POLICY IF EXISTS policy_assessments_internal ON assessment.assessments';
             EXECUTE '
-                CREATE POLICY policy_medical_expert_assessments
+                CREATE POLICY policy_assessments_internal
                 ON assessment.assessments
                 FOR SELECT
                 USING (
-                    expert_id IN
-                    (
-                        SELECT medical_expert_id
-                        FROM expert.medical_experts
-                        WHERE linked_portal_user = security.current_user_id()
-                    )
+                    created_by = security.current_user_id()
                 )
             ';
         END IF;
@@ -840,30 +815,20 @@ BEGIN
     END IF;
 
     IF to_regclass('appointments.appointments') IS NOT NULL THEN
-        EXECUTE 'DROP POLICY IF EXISTS policy_appointments_internal ON appointments.appointments';
-        EXECUTE '
-            CREATE POLICY policy_appointments_internal
-            ON appointments.appointments
-            FOR SELECT
-            USING (
-                assigned_to = security.current_user_id()
-                OR created_by = security.current_user_id()
-            )
-        ';
-
-        IF to_regclass('expert.medical_experts') IS NOT NULL THEN
-            EXECUTE 'DROP POLICY IF EXISTS policy_appointments_expert ON appointments.appointments';
+        IF EXISTS (
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'appointments'
+              AND table_name = 'appointments'
+              AND column_name = 'created_by'
+        ) THEN
+            EXECUTE 'DROP POLICY IF EXISTS policy_appointments_internal ON appointments.appointments';
             EXECUTE '
-                CREATE POLICY policy_appointments_expert
+                CREATE POLICY policy_appointments_internal
                 ON appointments.appointments
                 FOR SELECT
                 USING (
-                    expert_id IN
-                    (
-                        SELECT medical_expert_id
-                        FROM expert.medical_experts
-                        WHERE linked_portal_user = security.current_user_id()
-                    )
+                    created_by = security.current_user_id()
                 )
             ';
         END IF;
