@@ -2,6 +2,7 @@ package com.kutlwano.auth.bootstrap;
 
 import com.kutlwano.auth.config.BootstrapProperties;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,6 +13,7 @@ import org.springframework.util.StringUtils;
 import java.util.UUID;
 
 @Component
+@ConditionalOnProperty(prefix = "bootstrap.admin", name = "enabled", havingValue = "true")
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class SuperAdminBootstrap implements CommandLineRunner {
 
@@ -29,11 +31,6 @@ public class SuperAdminBootstrap implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (!properties.isEnabled()) {
-            System.out.println("SuperAdminBootstrap skipped: bootstrap.admin.enabled=false");
-            return;
-        }
-
         validate();
 
         Integer existing = jdbcTemplate.queryForObject("""
@@ -124,10 +121,10 @@ public class SuperAdminBootstrap implements CommandLineRunner {
 
     private void validate() {
         if (!StringUtils.hasText(properties.getUsername())
-            || !StringUtils.hasText(properties.getEmail())
-            || !StringUtils.hasText(properties.getPassword())
-            || !StringUtils.hasText(properties.getFirstName())
-            || !StringUtils.hasText(properties.getLastName())) {
+                || !StringUtils.hasText(properties.getEmail())
+                || !StringUtils.hasText(properties.getPassword())
+                || !StringUtils.hasText(properties.getFirstName())
+                || !StringUtils.hasText(properties.getLastName())) {
             throw new IllegalStateException("Set all bootstrap.admin.* values before enabling bootstrap");
         }
     }
