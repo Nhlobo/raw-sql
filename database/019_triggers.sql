@@ -25,13 +25,6 @@ Rerun-safe trigger layer with:
 - dashboard refresh flags
 - external portal synchronization
 - validation and soft delete enforcement
-
-This rewrite fixes:
-- non-idempotent trigger creation
-- syntax errors
-- self-recursing trigger patterns
-- schema/table existence sensitivity
-- inconsistent status-column usage where possible
 ===============================================================================
 */
 
@@ -69,24 +62,31 @@ LANGUAGE plpgsql
 AS
 $$
 BEGIN
-    IF to_regclass('audit.audit_events') IS NOT NULL THEN
-        INSERT INTO audit.audit_events
-        (
-            module_name,
-            entity_name,
-            entity_id,
-            event_type,
-            occurred_at
-        )
-        VALUES
-        (
-            TG_TABLE_SCHEMA,
-            TG_TABLE_NAME,
-            COALESCE(NEW.id, OLD.id, NEW.master_file_id, OLD.master_file_id, NEW.document_id, OLD.document_id, NEW.invoice_id, OLD.invoice_id),
-            TG_OP,
-            core.utc_now()
-        );
-    END IF;
+    INSERT INTO audit.audit_events
+    (
+        module_name,
+        entity_name,
+        entity_id,
+        event_type,
+        occurred_at
+    )
+    VALUES
+    (
+        TG_TABLE_SCHEMA,
+        TG_TABLE_NAME,
+        COALESCE(
+            NEW.id,
+            OLD.id,
+            NEW.master_file_id,
+            OLD.master_file_id,
+            NEW.document_id,
+            OLD.document_id,
+            NEW.invoice_id,
+            OLD.invoice_id
+        ),
+        TG_OP,
+        core.utc_now()
+    );
 
     RETURN COALESCE(NEW, OLD);
 END;
@@ -126,28 +126,26 @@ LANGUAGE plpgsql
 AS
 $$
 BEGIN
-    IF to_regclass('notifications.notification_queue') IS NOT NULL THEN
-        INSERT INTO notifications.notification_queue
-        (
-            notification_channel,
-            recipient_user_id,
-            subject,
-            message_body,
-            priority,
-            queue_status,
-            queued_at
-        )
-        VALUES
-        (
-            'email',
-            NEW.created_by,
-            'Appointment Scheduled',
-            'A new appointment has been successfully scheduled.',
-            'normal',
-            'queued',
-            core.utc_now()
-        );
-    END IF;
+    INSERT INTO notifications.notification_queue
+    (
+        notification_channel,
+        recipient_user_id,
+        subject,
+        message_body,
+        priority,
+        queue_status,
+        queued_at
+    )
+    VALUES
+    (
+        'email',
+        NEW.created_by,
+        'Appointment Scheduled',
+        'A new appointment has been successfully scheduled.',
+        'normal',
+        'queued',
+        core.utc_now()
+    );
 
     UPDATE master.master_files
     SET current_stage = 'Appointment Scheduled',
@@ -221,24 +219,22 @@ LANGUAGE plpgsql
 AS
 $$
 BEGIN
-    IF to_regclass('audit.record_versions') IS NOT NULL THEN
-        INSERT INTO audit.record_versions
-        (
-            entity_name,
-            entity_id,
-            version_number,
-            snapshot,
-            created_at
-        )
-        VALUES
-        (
-            'documents',
-            NEW.document_id,
-            COALESCE(NEW.version_number, 1),
-            to_jsonb(NEW),
-            core.utc_now()
-        );
-    END IF;
+    INSERT INTO audit.record_versions
+    (
+        entity_name,
+        entity_id,
+        version_number,
+        snapshot,
+        created_at
+    )
+    VALUES
+    (
+        'documents',
+        NEW.document_id,
+        COALESCE(NEW.version_number, 1),
+        to_jsonb(NEW),
+        core.utc_now()
+    );
 
     RETURN NEW;
 END;
@@ -286,22 +282,20 @@ LANGUAGE plpgsql
 AS
 $$
 BEGIN
-    IF to_regclass('notifications.communication_history') IS NOT NULL THEN
-        INSERT INTO notifications.communication_history
-        (
-            notification_queue_id,
-            notification_channel,
-            delivery_status,
-            created_at
-        )
-        VALUES
-        (
-            NEW.notification_queue_id,
-            NEW.notification_channel,
-            NEW.queue_status,
-            core.utc_now()
-        );
-    END IF;
+    INSERT INTO notifications.communication_history
+    (
+        notification_queue_id,
+        notification_channel,
+        delivery_status,
+        created_at
+    )
+    VALUES
+    (
+        NEW.notification_queue_id,
+        NEW.notification_channel,
+        NEW.queue_status,
+        core.utc_now()
+    );
 
     RETURN NEW;
 END;
@@ -320,24 +314,22 @@ LANGUAGE plpgsql
 AS
 $$
 BEGIN
-    IF to_regclass('external.portal_timeline') IS NOT NULL THEN
-        INSERT INTO external.portal_timeline
-        (
-            portal_user_id,
-            event_type,
-            event_title,
-            description,
-            created_at
-        )
-        VALUES
-        (
-            NEW.portal_user_id,
-            TG_OP,
-            'Portal Activity',
-            'External user activity recorded.',
-            core.utc_now()
-        );
-    END IF;
+    INSERT INTO external.portal_timeline
+    (
+        portal_user_id,
+        event_type,
+        event_title,
+        description,
+        created_at
+    )
+    VALUES
+    (
+        NEW.portal_user_id,
+        TG_OP,
+        'Portal Activity',
+        'External user activity recorded.',
+        core.utc_now()
+    );
 
     RETURN NEW;
 END;
@@ -356,12 +348,10 @@ LANGUAGE plpgsql
 AS
 $$
 BEGIN
-    IF to_regclass('dashboard.dashboard_refresh') IS NOT NULL THEN
-        UPDATE dashboard.dashboard_refresh
-        SET refresh_required = TRUE,
-            last_change = core.utc_now()
-        WHERE dashboard_name = 'executive';
-    END IF;
+    UPDATE dashboard.dashboard_refresh
+    SET refresh_required = TRUE,
+        last_change = core.utc_now()
+    WHERE dashboard_name = 'executive';
 
     RETURN COALESCE(NEW, OLD);
 END;
@@ -404,26 +394,24 @@ LANGUAGE plpgsql
 AS
 $$
 BEGIN
-    IF to_regclass('audit.security_audit') IS NOT NULL THEN
-        INSERT INTO audit.security_audit
-        (
-            audit_event_id,
-            login_result,
-            authentication_method,
-            mfa_used,
-            ip_address,
-            created_at
-        )
-        VALUES
-        (
-            core.generate_uuid(),
-            NEW.login_result,
-            NEW.authentication_method,
-            NEW.mfa_used,
-            NEW.ip_address,
-            core.utc_now()
-        );
-    END IF;
+    INSERT INTO audit.security_audit
+    (
+        audit_event_id,
+        login_result,
+        authentication_method,
+        mfa_used,
+        ip_address,
+        created_at
+    )
+    VALUES
+    (
+        core.generate_uuid(),
+        NEW.login_result,
+        NEW.authentication_method,
+        NEW.mfa_used,
+        NEW.ip_address,
+        core.utc_now()
+    );
 
     RETURN NEW;
 END;
@@ -466,22 +454,20 @@ BEGIN
     IF NEW.workflow_status = 'closed'
        AND OLD.workflow_status IS DISTINCT FROM 'closed'
     THEN
-        IF to_regclass('archive.master_file_archive') IS NOT NULL THEN
-            INSERT INTO archive.master_file_archive
-            (
-                master_file_id,
-                archived_at,
-                archived_by,
-                archive_reason
-            )
-            VALUES
-            (
-                NEW.master_file_id,
-                core.utc_now(),
-                NEW.updated_by,
-                'Case Closed'
-            );
-        END IF;
+        INSERT INTO archive.master_file_archive
+        (
+            master_file_id,
+            archived_at,
+            archived_by,
+            archive_reason
+        )
+        VALUES
+        (
+            NEW.master_file_id,
+            core.utc_now(),
+            NEW.updated_by,
+            'Case Closed'
+        );
     END IF;
 
     RETURN NEW;
@@ -501,22 +487,20 @@ LANGUAGE plpgsql
 AS
 $$
 BEGIN
-    IF to_regclass('audit.retention_execution') IS NOT NULL THEN
-        INSERT INTO audit.retention_execution
-        (
-            entity_name,
-            entity_id,
-            retention_date,
-            created_at
-        )
-        VALUES
-        (
-            TG_TABLE_NAME,
-            NEW.master_file_id,
-            core.utc_now() + INTERVAL '7 years',
-            core.utc_now()
-        );
-    END IF;
+    INSERT INTO audit.retention_execution
+    (
+        entity_name,
+        entity_id,
+        retention_date,
+        created_at
+    )
+    VALUES
+    (
+        TG_TABLE_NAME,
+        NEW.master_file_id,
+        core.utc_now() + INTERVAL '7 years',
+        core.utc_now()
+    );
 
     RETURN NEW;
 END;
@@ -606,26 +590,24 @@ LANGUAGE plpgsql
 AS
 $$
 BEGIN
-    IF to_regclass('audit.event_store') IS NOT NULL THEN
-        INSERT INTO audit.event_store
-        (
-            aggregate_type,
-            aggregate_id,
-            sequence_number,
-            event_name,
-            event_payload,
-            created_at
-        )
-        VALUES
-        (
-            NEW.entity_name,
-            NEW.entity_id,
-            nextval('audit.event_sequence'),
-            NEW.event_type,
-            to_jsonb(NEW),
-            core.utc_now()
-        );
-    END IF;
+    INSERT INTO audit.event_store
+    (
+        aggregate_type,
+        aggregate_id,
+        sequence_number,
+        event_name,
+        event_payload,
+        created_at
+    )
+    VALUES
+    (
+        NEW.entity_name,
+        NEW.entity_id,
+        nextval('audit.event_sequence'),
+        NEW.event_type,
+        to_jsonb(NEW),
+        core.utc_now()
+    );
 
     RETURN NEW;
 END;
@@ -644,13 +626,11 @@ LANGUAGE plpgsql
 AS
 $$
 BEGIN
-    IF to_regclass('dashboard.dashboard_refresh') IS NOT NULL THEN
-        UPDATE dashboard.dashboard_refresh
-        SET refresh_required = TRUE,
-            refresh_reason = 'Enterprise KPI Update',
-            last_change = core.utc_now()
-        WHERE dashboard_name = 'executive';
-    END IF;
+    UPDATE dashboard.dashboard_refresh
+    SET refresh_required = TRUE,
+        refresh_reason = 'Enterprise KPI Update',
+        last_change = core.utc_now()
+    WHERE dashboard_name = 'executive';
 
     RETURN COALESCE(NEW, OLD);
 END;
@@ -682,348 +662,313 @@ IS 'Enterprise trigger execution monitoring';
 -- AUTOMATIC CREATED/UPDATED TIMESTAMPS
 -- =============================================================================
 
-DO
-$$
-BEGIN
-    IF to_regclass('security.users') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_users_updated ON security.users;
-        CREATE TRIGGER trg_users_updated
-        BEFORE UPDATE ON security.users
-        FOR EACH ROW
-        EXECUTE FUNCTION core.fn_set_updated_at();
-    END IF;
+DROP TRIGGER IF EXISTS trg_users_updated ON security.users;
+CREATE TRIGGER trg_users_updated
+BEFORE UPDATE
+ON security.users
+FOR EACH ROW
+EXECUTE FUNCTION core.fn_set_updated_at();
 
-    IF to_regclass('attorney.attorneys') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_attorneys_updated ON attorney.attorneys;
-        CREATE TRIGGER trg_attorneys_updated
-        BEFORE UPDATE ON attorney.attorneys
-        FOR EACH ROW
-        EXECUTE FUNCTION core.fn_set_updated_at();
-    END IF;
+DROP TRIGGER IF EXISTS trg_attorneys_updated ON attorney.attorneys;
+CREATE TRIGGER trg_attorneys_updated
+BEFORE UPDATE
+ON attorney.attorneys
+FOR EACH ROW
+EXECUTE FUNCTION core.fn_set_updated_at();
 
-    IF to_regclass('expert.medical_experts') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_experts_updated ON expert.medical_experts;
-        CREATE TRIGGER trg_experts_updated
-        BEFORE UPDATE ON expert.medical_experts
-        FOR EACH ROW
-        EXECUTE FUNCTION core.fn_set_updated_at();
-    END IF;
+DROP TRIGGER IF EXISTS trg_experts_updated ON expert.medical_experts;
+CREATE TRIGGER trg_experts_updated
+BEFORE UPDATE
+ON expert.medical_experts
+FOR EACH ROW
+EXECUTE FUNCTION core.fn_set_updated_at();
 
-    IF to_regclass('master.master_files') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_master_updated ON master.master_files;
-        CREATE TRIGGER trg_master_updated
-        BEFORE UPDATE ON master.master_files
-        FOR EACH ROW
-        EXECUTE FUNCTION core.fn_set_updated_at();
-    END IF;
+DROP TRIGGER IF EXISTS trg_master_updated ON master.master_files;
+CREATE TRIGGER trg_master_updated
+BEFORE UPDATE
+ON master.master_files
+FOR EACH ROW
+EXECUTE FUNCTION core.fn_set_updated_at();
 
-    IF to_regclass('claimant.claimants') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_claimants_updated ON claimant.claimants;
-        CREATE TRIGGER trg_claimants_updated
-        BEFORE UPDATE ON claimant.claimants
-        FOR EACH ROW
-        EXECUTE FUNCTION core.fn_set_updated_at();
-    END IF;
+DROP TRIGGER IF EXISTS trg_claimants_updated ON claimant.claimants;
+CREATE TRIGGER trg_claimants_updated
+BEFORE UPDATE
+ON claimant.claimants
+FOR EACH ROW
+EXECUTE FUNCTION core.fn_set_updated_at();
 
-    IF to_regclass('appointments.appointments') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_appointments_updated ON appointments.appointments;
-        CREATE TRIGGER trg_appointments_updated
-        BEFORE UPDATE ON appointments.appointments
-        FOR EACH ROW
-        EXECUTE FUNCTION core.fn_set_updated_at();
-    END IF;
+DROP TRIGGER IF EXISTS trg_appointments_updated ON appointments.appointments;
+CREATE TRIGGER trg_appointments_updated
+BEFORE UPDATE
+ON appointments.appointments
+FOR EACH ROW
+EXECUTE FUNCTION core.fn_set_updated_at();
 
-    IF to_regclass('assessment.assessments') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_assessments_updated ON assessment.assessments;
-        CREATE TRIGGER trg_assessments_updated
-        BEFORE UPDATE ON assessment.assessments
-        FOR EACH ROW
-        EXECUTE FUNCTION core.fn_set_updated_at();
-    END IF;
+DROP TRIGGER IF EXISTS trg_assessments_updated ON assessment.assessments;
+CREATE TRIGGER trg_assessments_updated
+BEFORE UPDATE
+ON assessment.assessments
+FOR EACH ROW
+EXECUTE FUNCTION core.fn_set_updated_at();
 
-    IF to_regclass('reports.reports') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_reports_updated ON reports.reports;
-        CREATE TRIGGER trg_reports_updated
-        BEFORE UPDATE ON reports.reports
-        FOR EACH ROW
-        EXECUTE FUNCTION core.fn_set_updated_at();
-    END IF;
+DROP TRIGGER IF EXISTS trg_reports_updated ON reports.reports;
+CREATE TRIGGER trg_reports_updated
+BEFORE UPDATE
+ON reports.reports
+FOR EACH ROW
+EXECUTE FUNCTION core.fn_set_updated_at();
 
-    IF to_regclass('documents.documents') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_documents_updated ON documents.documents;
-        CREATE TRIGGER trg_documents_updated
-        BEFORE UPDATE ON documents.documents
-        FOR EACH ROW
-        EXECUTE FUNCTION core.fn_set_updated_at();
-    END IF;
+DROP TRIGGER IF EXISTS trg_documents_updated ON documents.documents;
+CREATE TRIGGER trg_documents_updated
+BEFORE UPDATE
+ON documents.documents
+FOR EACH ROW
+EXECUTE FUNCTION core.fn_set_updated_at();
 
-    IF to_regclass('finance.invoices') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_invoices_updated ON finance.invoices;
-        CREATE TRIGGER trg_invoices_updated
-        BEFORE UPDATE ON finance.invoices
-        FOR EACH ROW
-        EXECUTE FUNCTION core.fn_set_updated_at();
-    END IF;
+DROP TRIGGER IF EXISTS trg_invoices_updated ON finance.invoices;
+CREATE TRIGGER trg_invoices_updated
+BEFORE UPDATE
+ON finance.invoices
+FOR EACH ROW
+EXECUTE FUNCTION core.fn_set_updated_at();
 
-    IF to_regclass('notifications.notification_queue') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_notifications_updated ON notifications.notification_queue;
-        CREATE TRIGGER trg_notifications_updated
-        BEFORE UPDATE ON notifications.notification_queue
-        FOR EACH ROW
-        EXECUTE FUNCTION core.fn_set_updated_at();
-    END IF;
+DROP TRIGGER IF EXISTS trg_notifications_updated ON notifications.notification_queue;
+CREATE TRIGGER trg_notifications_updated
+BEFORE UPDATE
+ON notifications.notification_queue
+FOR EACH ROW
+EXECUTE FUNCTION core.fn_set_updated_at();
 
-    IF to_regclass('external.portal_users') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_external_users_updated ON external.portal_users;
-        CREATE TRIGGER trg_external_users_updated
-        BEFORE UPDATE ON external.portal_users
-        FOR EACH ROW
-        EXECUTE FUNCTION core.fn_set_updated_at();
-    END IF;
-END;
-$$;
+DROP TRIGGER IF EXISTS trg_external_users_updated ON external.portal_users;
+CREATE TRIGGER trg_external_users_updated
+BEFORE UPDATE
+ON external.portal_users
+FOR EACH ROW
+EXECUTE FUNCTION core.fn_set_updated_at();
 
 -- =============================================================================
 -- ATTACH AUDIT TRIGGERS
 -- =============================================================================
 
-DO
-$$
-BEGIN
-    IF to_regclass('security.users') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_users_audit ON security.users;
-        CREATE TRIGGER trg_users_audit
-        AFTER INSERT OR UPDATE OR DELETE ON security.users
-        FOR EACH ROW
-        EXECUTE FUNCTION audit.fn_log_change();
-    END IF;
+DROP TRIGGER IF EXISTS trg_users_audit ON security.users;
+CREATE TRIGGER trg_users_audit
+AFTER INSERT OR UPDATE OR DELETE
+ON security.users
+FOR EACH ROW
+EXECUTE FUNCTION audit.fn_log_change();
 
-    IF to_regclass('master.master_files') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_master_audit ON master.master_files;
-        CREATE TRIGGER trg_master_audit
-        AFTER INSERT OR UPDATE OR DELETE ON master.master_files
-        FOR EACH ROW
-        EXECUTE FUNCTION audit.fn_log_change();
-    END IF;
+DROP TRIGGER IF EXISTS trg_master_audit ON master.master_files;
+CREATE TRIGGER trg_master_audit
+AFTER INSERT OR UPDATE OR DELETE
+ON master.master_files
+FOR EACH ROW
+EXECUTE FUNCTION audit.fn_log_change();
 
-    IF to_regclass('reports.reports') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_reports_audit ON reports.reports;
-        CREATE TRIGGER trg_reports_audit
-        AFTER INSERT OR UPDATE OR DELETE ON reports.reports
-        FOR EACH ROW
-        EXECUTE FUNCTION audit.fn_log_change();
-    END IF;
+DROP TRIGGER IF EXISTS trg_reports_audit ON reports.reports;
+CREATE TRIGGER trg_reports_audit
+AFTER INSERT OR UPDATE OR DELETE
+ON reports.reports
+FOR EACH ROW
+EXECUTE FUNCTION audit.fn_log_change();
 
-    IF to_regclass('documents.documents') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_documents_audit ON documents.documents;
-        CREATE TRIGGER trg_documents_audit
-        AFTER INSERT OR UPDATE OR DELETE ON documents.documents
-        FOR EACH ROW
-        EXECUTE FUNCTION audit.fn_log_change();
-    END IF;
+DROP TRIGGER IF EXISTS trg_documents_audit ON documents.documents;
+CREATE TRIGGER trg_documents_audit
+AFTER INSERT OR UPDATE OR DELETE
+ON documents.documents
+FOR EACH ROW
+EXECUTE FUNCTION audit.fn_log_change();
 
-    IF to_regclass('finance.invoices') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_finance_audit ON finance.invoices;
-        CREATE TRIGGER trg_finance_audit
-        AFTER INSERT OR UPDATE OR DELETE ON finance.invoices
-        FOR EACH ROW
-        EXECUTE FUNCTION audit.fn_log_change();
-    END IF;
+DROP TRIGGER IF EXISTS trg_finance_audit ON finance.invoices;
+CREATE TRIGGER trg_finance_audit
+AFTER INSERT OR UPDATE OR DELETE
+ON finance.invoices
+FOR EACH ROW
+EXECUTE FUNCTION audit.fn_log_change();
 
-    IF to_regclass('notifications.notification_queue') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_notifications_audit ON notifications.notification_queue;
-        CREATE TRIGGER trg_notifications_audit
-        AFTER INSERT OR UPDATE OR DELETE ON notifications.notification_queue
-        FOR EACH ROW
-        EXECUTE FUNCTION audit.fn_log_change();
-    END IF;
-END;
-$$;
+DROP TRIGGER IF EXISTS trg_notifications_audit ON notifications.notification_queue;
+CREATE TRIGGER trg_notifications_audit
+AFTER INSERT OR UPDATE OR DELETE
+ON notifications.notification_queue
+FOR EACH ROW
+EXECUTE FUNCTION audit.fn_log_change();
+
+-- =============================================================================
+-- MASTER FILE ACTIVITY TRIGGERS
+-- =============================================================================
+
+DROP TRIGGER IF EXISTS trg_master_activity ON assessment.assessments;
+CREATE TRIGGER trg_master_activity
+AFTER INSERT OR UPDATE
+ON assessment.assessments
+FOR EACH ROW
+EXECUTE FUNCTION master.fn_update_activity();
+
+DROP TRIGGER IF EXISTS trg_report_activity ON reports.reports;
+CREATE TRIGGER trg_report_activity
+AFTER INSERT OR UPDATE
+ON reports.reports
+FOR EACH ROW
+EXECUTE FUNCTION master.fn_update_activity();
+
+DROP TRIGGER IF EXISTS trg_document_activity ON documents.documents;
+CREATE TRIGGER trg_document_activity
+AFTER INSERT OR UPDATE
+ON documents.documents
+FOR EACH ROW
+EXECUTE FUNCTION master.fn_update_activity();
 
 -- =============================================================================
 -- DOMAIN TRIGGERS
 -- =============================================================================
 
-DO
-$$
-BEGIN
-    IF to_regclass('assessment.assessments') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_master_activity ON assessment.assessments;
-        CREATE TRIGGER trg_master_activity
-        AFTER INSERT OR UPDATE ON assessment.assessments
-        FOR EACH ROW
-        EXECUTE FUNCTION master.fn_update_activity();
+DROP TRIGGER IF EXISTS trg_after_appointment_created ON appointments.appointments;
+CREATE TRIGGER trg_after_appointment_created
+AFTER INSERT
+ON appointments.appointments
+FOR EACH ROW
+EXECUTE FUNCTION appointments.fn_after_appointment_created();
 
-        DROP TRIGGER IF EXISTS trg_assessment_status_change ON assessment.assessments;
-        CREATE TRIGGER trg_assessment_status_change
-        AFTER UPDATE ON assessment.assessments
-        FOR EACH ROW
-        EXECUTE FUNCTION assessment.fn_assessment_status_change();
-    END IF;
+DROP TRIGGER IF EXISTS trg_assessment_status_change ON assessment.assessments;
+CREATE TRIGGER trg_assessment_status_change
+AFTER UPDATE
+ON assessment.assessments
+FOR EACH ROW
+EXECUTE FUNCTION assessment.fn_assessment_status_change();
 
-    IF to_regclass('reports.reports') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_report_activity ON reports.reports;
-        CREATE TRIGGER trg_report_activity
-        AFTER INSERT OR UPDATE ON reports.reports
-        FOR EACH ROW
-        EXECUTE FUNCTION master.fn_update_activity();
+DROP TRIGGER IF EXISTS trg_report_completed ON reports.reports;
+CREATE TRIGGER trg_report_completed
+AFTER UPDATE
+ON reports.reports
+FOR EACH ROW
+EXECUTE FUNCTION reports.fn_report_completed();
 
-        DROP TRIGGER IF EXISTS trg_report_completed ON reports.reports;
-        CREATE TRIGGER trg_report_completed
-        AFTER UPDATE ON reports.reports
-        FOR EACH ROW
-        EXECUTE FUNCTION reports.fn_report_completed();
-    END IF;
+DROP TRIGGER IF EXISTS trg_document_versioning ON documents.documents;
+CREATE TRIGGER trg_document_versioning
+AFTER INSERT OR UPDATE
+ON documents.documents
+FOR EACH ROW
+EXECUTE FUNCTION documents.fn_document_versioning();
 
-    IF to_regclass('documents.documents') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_document_activity ON documents.documents;
-        CREATE TRIGGER trg_document_activity
-        AFTER INSERT OR UPDATE ON documents.documents
-        FOR EACH ROW
-        EXECUTE FUNCTION master.fn_update_activity();
+DROP TRIGGER IF EXISTS trg_payment_received ON finance.customer_payments;
+CREATE TRIGGER trg_payment_received
+AFTER INSERT
+ON finance.customer_payments
+FOR EACH ROW
+EXECUTE FUNCTION finance.fn_payment_received();
 
-        DROP TRIGGER IF EXISTS trg_document_versioning ON documents.documents;
-        CREATE TRIGGER trg_document_versioning
-        AFTER INSERT OR UPDATE ON documents.documents
-        FOR EACH ROW
-        EXECUTE FUNCTION documents.fn_document_versioning();
-    END IF;
+DROP TRIGGER IF EXISTS trg_notification_history ON notifications.notification_queue;
+CREATE TRIGGER trg_notification_history
+AFTER INSERT
+ON notifications.notification_queue
+FOR EACH ROW
+EXECUTE FUNCTION notifications.fn_create_notification_history();
 
-    IF to_regclass('appointments.appointments') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_after_appointment_created ON appointments.appointments;
-        CREATE TRIGGER trg_after_appointment_created
-        AFTER INSERT ON appointments.appointments
-        FOR EACH ROW
-        EXECUTE FUNCTION appointments.fn_after_appointment_created();
-    END IF;
+DROP TRIGGER IF EXISTS trg_sync_portal_activity ON external.portal_users;
+CREATE TRIGGER trg_sync_portal_activity
+AFTER INSERT OR UPDATE
+ON external.portal_users
+FOR EACH ROW
+EXECUTE FUNCTION external.fn_sync_portal_activity();
 
-    IF to_regclass('finance.customer_payments') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_payment_received ON finance.customer_payments;
-        CREATE TRIGGER trg_payment_received
-        AFTER INSERT ON finance.customer_payments
-        FOR EACH ROW
-        EXECUTE FUNCTION finance.fn_payment_received();
-    END IF;
+DROP TRIGGER IF EXISTS trg_dashboard_refresh_master ON master.master_files;
+CREATE TRIGGER trg_dashboard_refresh_master
+AFTER INSERT OR UPDATE OR DELETE
+ON master.master_files
+FOR EACH ROW
+EXECUTE FUNCTION dashboard.fn_mark_refresh_required();
 
-    IF to_regclass('notifications.notification_queue') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_notification_history ON notifications.notification_queue;
-        CREATE TRIGGER trg_notification_history
-        AFTER INSERT ON notifications.notification_queue
-        FOR EACH ROW
-        EXECUTE FUNCTION notifications.fn_create_notification_history();
+DROP TRIGGER IF EXISTS trg_dashboard_refresh_reports ON reports.reports;
+CREATE TRIGGER trg_dashboard_refresh_reports
+AFTER INSERT OR UPDATE OR DELETE
+ON reports.reports
+FOR EACH ROW
+EXECUTE FUNCTION dashboard.fn_mark_refresh_required();
 
-        DROP TRIGGER IF EXISTS trg_notification_retry ON notifications.notification_queue;
-        CREATE TRIGGER trg_notification_retry
-        BEFORE UPDATE ON notifications.notification_queue
-        FOR EACH ROW
-        EXECUTE FUNCTION notifications.fn_retry_failed_notification();
-    END IF;
+DROP TRIGGER IF EXISTS trg_validate_master_file ON master.master_files;
+CREATE TRIGGER trg_validate_master_file
+BEFORE INSERT OR UPDATE
+ON master.master_files
+FOR EACH ROW
+EXECUTE FUNCTION master.fn_validate_master_file();
 
-    IF to_regclass('external.portal_users') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_sync_portal_activity ON external.portal_users;
-        CREATE TRIGGER trg_sync_portal_activity
-        AFTER INSERT OR UPDATE ON external.portal_users
-        FOR EACH ROW
-        EXECUTE FUNCTION external.fn_sync_portal_activity();
-    END IF;
+DROP TRIGGER IF EXISTS trg_security_login ON security.login_history;
+CREATE TRIGGER trg_security_login
+AFTER INSERT
+ON security.login_history
+FOR EACH ROW
+EXECUTE FUNCTION security.fn_login_audit();
 
-    IF to_regclass('master.master_files') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_validate_master_file ON master.master_files;
-        CREATE TRIGGER trg_validate_master_file
-        BEFORE INSERT OR UPDATE ON master.master_files
-        FOR EACH ROW
-        EXECUTE FUNCTION master.fn_validate_master_file();
+DROP TRIGGER IF EXISTS trg_master_soft_delete ON master.master_files;
+CREATE TRIGGER trg_master_soft_delete
+BEFORE UPDATE OF is_deleted
+ON master.master_files
+FOR EACH ROW
+WHEN (NEW.is_deleted = TRUE AND COALESCE(OLD.is_deleted, FALSE) = FALSE)
+EXECUTE FUNCTION core.fn_soft_delete();
 
-        DROP TRIGGER IF EXISTS trg_master_soft_delete ON master.master_files;
-        CREATE TRIGGER trg_master_soft_delete
-        BEFORE UPDATE OF is_deleted ON master.master_files
-        FOR EACH ROW
-        WHEN (NEW.is_deleted = TRUE AND COALESCE(OLD.is_deleted, FALSE) = FALSE)
-        EXECUTE FUNCTION core.fn_soft_delete();
+DROP TRIGGER IF EXISTS trg_document_soft_delete ON documents.documents;
+CREATE TRIGGER trg_document_soft_delete
+BEFORE UPDATE OF is_deleted
+ON documents.documents
+FOR EACH ROW
+WHEN (NEW.is_deleted = TRUE AND COALESCE(OLD.is_deleted, FALSE) = FALSE)
+EXECUTE FUNCTION core.fn_soft_delete();
 
-        DROP TRIGGER IF EXISTS trg_archive_master_files ON master.master_files;
-        CREATE TRIGGER trg_archive_master_files
-        AFTER UPDATE ON master.master_files
-        FOR EACH ROW
-        EXECUTE FUNCTION archive.fn_archive_completed_files();
+DROP TRIGGER IF EXISTS trg_archive_master_files ON master.master_files;
+CREATE TRIGGER trg_archive_master_files
+AFTER UPDATE
+ON master.master_files
+FOR EACH ROW
+EXECUTE FUNCTION archive.fn_archive_completed_files();
 
-        DROP TRIGGER IF EXISTS trg_retention_policy ON master.master_files;
-        CREATE TRIGGER trg_retention_policy
-        AFTER INSERT ON master.master_files
-        FOR EACH ROW
-        EXECUTE FUNCTION audit.fn_apply_retention_policy();
+DROP TRIGGER IF EXISTS trg_retention_policy ON master.master_files;
+CREATE TRIGGER trg_retention_policy
+AFTER INSERT
+ON master.master_files
+FOR EACH ROW
+EXECUTE FUNCTION audit.fn_apply_retention_policy();
 
-        DROP TRIGGER IF EXISTS trg_dashboard_refresh_master ON master.master_files;
-        CREATE TRIGGER trg_dashboard_refresh_master
-        AFTER INSERT OR UPDATE OR DELETE ON master.master_files
-        FOR EACH ROW
-        EXECUTE FUNCTION dashboard.fn_mark_refresh_required();
-    END IF;
+DROP TRIGGER IF EXISTS trg_aod_installment_paid ON aod.payments;
+CREATE TRIGGER trg_aod_installment_paid
+AFTER INSERT
+ON aod.payments
+FOR EACH ROW
+EXECUTE FUNCTION aod.fn_installment_paid();
 
-    IF to_regclass('documents.documents') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_document_soft_delete ON documents.documents;
-        CREATE TRIGGER trg_document_soft_delete
-        BEFORE UPDATE OF is_deleted ON documents.documents
-        FOR EACH ROW
-        WHEN (NEW.is_deleted = TRUE AND COALESCE(OLD.is_deleted, FALSE) = FALSE)
-        EXECUTE FUNCTION core.fn_soft_delete();
-    END IF;
+DROP TRIGGER IF EXISTS trg_invoice_age ON finance.invoices;
+CREATE TRIGGER trg_invoice_age
+BEFORE INSERT OR UPDATE
+ON finance.invoices
+FOR EACH ROW
+EXECUTE FUNCTION finance.fn_set_invoice_age();
 
-    IF to_regclass('security.login_history') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_security_login ON security.login_history;
-        CREATE TRIGGER trg_security_login
-        AFTER INSERT ON security.login_history
-        FOR EACH ROW
-        EXECUTE FUNCTION security.fn_login_audit();
-    END IF;
+DROP TRIGGER IF EXISTS trg_notification_retry ON notifications.notification_queue;
+CREATE TRIGGER trg_notification_retry
+BEFORE UPDATE
+ON notifications.notification_queue
+FOR EACH ROW
+EXECUTE FUNCTION notifications.fn_retry_failed_notification();
 
-    IF to_regclass('aod.payments') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_aod_installment_paid ON aod.payments;
-        CREATE TRIGGER trg_aod_installment_paid
-        AFTER INSERT ON aod.payments
-        FOR EACH ROW
-        EXECUTE FUNCTION aod.fn_installment_paid();
-    END IF;
+DROP TRIGGER IF EXISTS trg_sync_event_store ON audit.audit_events;
+CREATE TRIGGER trg_sync_event_store
+AFTER INSERT
+ON audit.audit_events
+FOR EACH ROW
+EXECUTE FUNCTION audit.fn_sync_event_store();
 
-    IF to_regclass('audit.audit_events') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_sync_event_store ON audit.audit_events;
-        CREATE TRIGGER trg_sync_event_store
-        AFTER INSERT ON audit.audit_events
-        FOR EACH ROW
-        EXECUTE FUNCTION audit.fn_sync_event_store();
-    END IF;
+DROP TRIGGER IF EXISTS trg_kpi_refresh_finance ON finance.invoices;
+CREATE TRIGGER trg_kpi_refresh_finance
+AFTER INSERT OR UPDATE OR DELETE
+ON finance.invoices
+FOR EACH ROW
+EXECUTE FUNCTION dashboard.fn_refresh_kpi();
 
-    IF to_regclass('finance.invoices') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_invoice_age ON finance.invoices;
-        CREATE TRIGGER trg_invoice_age
-        BEFORE INSERT OR UPDATE ON finance.invoices
-        FOR EACH ROW
-        EXECUTE FUNCTION finance.fn_set_invoice_age();
-
-        DROP TRIGGER IF EXISTS trg_kpi_refresh_finance ON finance.invoices;
-        CREATE TRIGGER trg_kpi_refresh_finance
-        AFTER INSERT OR UPDATE OR DELETE ON finance.invoices
-        FOR EACH ROW
-        EXECUTE FUNCTION dashboard.fn_refresh_kpi();
-    END IF;
-
-    IF to_regclass('assessment.assessments') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_kpi_refresh_assessment ON assessment.assessments;
-        CREATE TRIGGER trg_kpi_refresh_assessment
-        AFTER INSERT OR UPDATE OR DELETE ON assessment.assessments
-        FOR EACH ROW
-        EXECUTE FUNCTION dashboard.fn_refresh_kpi();
-    END IF;
-
-    IF to_regclass('reports.reports') IS NOT NULL THEN
-        DROP TRIGGER IF EXISTS trg_dashboard_refresh_reports ON reports.reports;
-        CREATE TRIGGER trg_dashboard_refresh_reports
-        AFTER INSERT OR UPDATE OR DELETE ON reports.reports
-        FOR EACH ROW
-        EXECUTE FUNCTION dashboard.fn_mark_refresh_required();
-    END IF;
-END;
-$$;
+DROP TRIGGER IF EXISTS trg_kpi_refresh_assessment ON assessment.assessments;
+CREATE TRIGGER trg_kpi_refresh_assessment
+AFTER INSERT OR UPDATE OR DELETE
+ON assessment.assessments
+FOR EACH ROW
+EXECUTE FUNCTION dashboard.fn_refresh_kpi();
 
 -- =============================================================================
 -- DEPLOYMENT VERIFICATION
