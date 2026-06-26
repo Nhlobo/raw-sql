@@ -34,4 +34,4 @@ for f in /app/database/*.sql; do
 done
 
 echo "All migrations completed successfully."
-exec java -jar app.jar
+exec java -jar /app/app.jar
