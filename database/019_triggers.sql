@@ -8,20 +8,21 @@ FILE
 019_triggers.sql
 
 VERSION
-1.2 FIXED
+1.3 FIXED
 
 DESCRIPTION
 
 Enterprise Automation Engine
 
 Safe, rerunnable trigger deployment.
-This rewrite avoids hard failures when optional schemas/tables do not exist.
+This rewrite avoids hard failures when optional schemas/tables/columns do not exist.
 
 Fixes included:
 - rerun-safe trigger creation
 - removed invalid trigger syntax
 - removed self-recursing notification retry pattern
 - guarded optional modules with existence checks
+- guarded soft-delete triggers by column existence
 - aligned finance payment trigger to finance.customer_payments
 - changed invoice aging trigger to run on finance.invoices
 ===============================================================================
@@ -912,19 +913,49 @@ AFTER INSERT ON security.login_history
 FOR EACH ROW
 EXECUTE FUNCTION security.fn_login_audit();
 
-DROP TRIGGER IF EXISTS trg_master_soft_delete ON master.master_files;
-CREATE TRIGGER trg_master_soft_delete
-BEFORE UPDATE OF is_deleted ON master.master_files
-FOR EACH ROW
-WHEN (NEW.is_deleted = TRUE AND COALESCE(OLD.is_deleted, FALSE) = FALSE)
-EXECUTE FUNCTION core.fn_soft_delete();
+DO
+$$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'master'
+          AND table_name = 'master_files'
+          AND column_name = 'is_deleted'
+    ) THEN
+        EXECUTE 'DROP TRIGGER IF EXISTS trg_master_soft_delete ON master.master_files';
+        EXECUTE '
+            CREATE TRIGGER trg_master_soft_delete
+            BEFORE UPDATE OF is_deleted ON master.master_files
+            FOR EACH ROW
+            WHEN (NEW.is_deleted = TRUE AND COALESCE(OLD.is_deleted, FALSE) = FALSE)
+            EXECUTE FUNCTION core.fn_soft_delete()
+        ';
+    END IF;
+END;
+$$;
 
-DROP TRIGGER IF EXISTS trg_document_soft_delete ON documents.documents;
-CREATE TRIGGER trg_document_soft_delete
-BEFORE UPDATE OF is_deleted ON documents.documents
-FOR EACH ROW
-WHEN (NEW.is_deleted = TRUE AND COALESCE(OLD.is_deleted, FALSE) = FALSE)
-EXECUTE FUNCTION core.fn_soft_delete();
+DO
+$$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'documents'
+          AND table_name = 'documents'
+          AND column_name = 'is_deleted'
+    ) THEN
+        EXECUTE 'DROP TRIGGER IF EXISTS trg_document_soft_delete ON documents.documents';
+        EXECUTE '
+            CREATE TRIGGER trg_document_soft_delete
+            BEFORE UPDATE OF is_deleted ON documents.documents
+            FOR EACH ROW
+            WHEN (NEW.is_deleted = TRUE AND COALESCE(OLD.is_deleted, FALSE) = FALSE)
+            EXECUTE FUNCTION core.fn_soft_delete()
+        ';
+    END IF;
+END;
+$$;
 
 DROP TRIGGER IF EXISTS trg_retention_policy ON master.master_files;
 CREATE TRIGGER trg_retention_policy
@@ -986,8 +1017,8 @@ BEGIN
            SELECT 1
            FROM pg_proc p
            JOIN pg_namespace n ON n.oid = p.pronamespace
-           WHERE n.nspname = ''external''
-             AND p.proname = ''fn_sync_portal_activity''
+           WHERE n.nspname = 'external'
+             AND p.proname = 'fn_sync_portal_activity'
        )
     THEN
         EXECUTE 'DROP TRIGGER IF EXISTS trg_sync_portal_activity ON external.portal_users';
