@@ -8,7 +8,7 @@ FILE
 020_rls_policies.sql
 
 VERSION
-1.2 FIXED
+1.3 FIXED
 
 DESCRIPTION
 
@@ -625,7 +625,6 @@ BEGIN
             FOR SELECT
             USING (
                 recipient_user_id = security.current_user_id()
-                OR created_by = security.current_user_id()
                 OR security.is_admin()
             )
         ';
