@@ -8,7 +8,7 @@ FILE
 008_claimants.sql
 
 VERSION
-1.1 FIXED
+1.2 FIXED
 
 DESCRIPTION
 
@@ -19,10 +19,6 @@ This version is idempotent and safe to rerun.
 */
 
 BEGIN;
-
--- =============================================================================
--- CLAIMANTS
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.claimants
 (
@@ -48,10 +44,10 @@ CREATE TABLE IF NOT EXISTS claimant.claimants
 
     initials VARCHAR(20),
 
-    gender master.gender
+    gender VARCHAR(30)
         NOT NULL,
 
-    marital_status master.marital_status,
+    marital_status VARCHAR(50),
 
     date_of_birth DATE,
 
@@ -64,7 +60,7 @@ CREATE TABLE IF NOT EXISTS claimant.claimants
     nationality VARCHAR(120)
         DEFAULT 'South African',
 
-    race master.population_group,
+    race VARCHAR(50),
 
     preferred_language VARCHAR(60)
         DEFAULT 'English',
@@ -76,7 +72,7 @@ CREATE TABLE IF NOT EXISTS claimant.claimants
 
     date_of_death DATE,
 
-    claimant_status master.claimant_status
+    claimant_status VARCHAR(50)
         DEFAULT 'active',
 
     created_by UUID,
@@ -104,10 +100,6 @@ ON claimant.claimants(south_african_id);
 
 CREATE INDEX IF NOT EXISTS idx_claimants_status
 ON claimant.claimants(claimant_status);
-
--- =============================================================================
--- CONTACT INFORMATION
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.contact_information
 (
@@ -150,10 +142,6 @@ CREATE TABLE IF NOT EXISTS claimant.contact_information
 COMMENT ON TABLE claimant.contact_information
 IS 'Claimant contact information';
 
--- =============================================================================
--- ADDRESSES
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.addresses
 (
     claimant_address_id UUID PRIMARY KEY
@@ -194,10 +182,6 @@ CREATE TABLE IF NOT EXISTS claimant.addresses
 COMMENT ON TABLE claimant.addresses
 IS 'Residential and postal addresses';
 
--- =============================================================================
--- EMPLOYMENT
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.employment
 (
     employment_id UUID PRIMARY KEY
@@ -235,10 +219,6 @@ CREATE TABLE IF NOT EXISTS claimant.employment
 COMMENT ON TABLE claimant.employment
 IS 'Employment history';
 
--- =============================================================================
--- NEXT OF KIN
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.next_of_kin
 (
     next_of_kin_id UUID PRIMARY KEY
@@ -270,10 +250,6 @@ CREATE TABLE IF NOT EXISTS claimant.next_of_kin
 COMMENT ON TABLE claimant.next_of_kin
 IS 'Next of kin';
 
--- =============================================================================
--- DEPENDANTS
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.dependants
 (
     dependant_id UUID PRIMARY KEY
@@ -300,10 +276,6 @@ CREATE TABLE IF NOT EXISTS claimant.dependants
 
 COMMENT ON TABLE claimant.dependants
 IS 'Claimant dependants';
-
--- =============================================================================
--- IDENTITY DOCUMENTS
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.identity_documents
 (
@@ -335,10 +307,6 @@ CREATE TABLE IF NOT EXISTS claimant.identity_documents
 
 COMMENT ON TABLE claimant.identity_documents
 IS 'Identity verification documents';
-
--- =============================================================================
--- MEDICAL HISTORY
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.medical_history
 (
@@ -390,10 +358,6 @@ IS 'General medical profile';
 CREATE INDEX IF NOT EXISTS idx_medical_history_claimant
 ON claimant.medical_history(claimant_id);
 
--- =============================================================================
--- CHRONIC CONDITIONS
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.chronic_conditions
 (
     chronic_condition_id UUID PRIMARY KEY
@@ -425,10 +389,6 @@ CREATE TABLE IF NOT EXISTS claimant.chronic_conditions
 COMMENT ON TABLE claimant.chronic_conditions
 IS 'Chronic illnesses';
 
--- =============================================================================
--- ALLERGIES
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.allergies
 (
     allergy_id UUID PRIMARY KEY
@@ -456,10 +416,6 @@ CREATE TABLE IF NOT EXISTS claimant.allergies
 
 COMMENT ON TABLE claimant.allergies
 IS 'Known allergies';
-
--- =============================================================================
--- CURRENT MEDICATION
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.current_medication
 (
@@ -490,10 +446,6 @@ CREATE TABLE IF NOT EXISTS claimant.current_medication
 COMMENT ON TABLE claimant.current_medication
 IS 'Current medication';
 
--- =============================================================================
--- SURGICAL HISTORY
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.surgical_history
 (
     surgery_id UUID PRIMARY KEY
@@ -518,10 +470,6 @@ CREATE TABLE IF NOT EXISTS claimant.surgical_history
 
 COMMENT ON TABLE claimant.surgical_history
 IS 'Previous surgeries';
-
--- =============================================================================
--- PREVIOUS INJURIES
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.previous_injuries
 (
@@ -550,10 +498,6 @@ CREATE TABLE IF NOT EXISTS claimant.previous_injuries
 COMMENT ON TABLE claimant.previous_injuries
 IS 'Historical injuries';
 
--- =============================================================================
--- DISABILITY INFORMATION
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.disability_information
 (
     disability_information_id UUID PRIMARY KEY
@@ -579,10 +523,6 @@ CREATE TABLE IF NOT EXISTS claimant.disability_information
 COMMENT ON TABLE claimant.disability_information
 IS 'Disability information';
 
--- =============================================================================
--- ACCIDENT DETAILS
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.accident_details
 (
     accident_detail_id UUID PRIMARY KEY
@@ -599,7 +539,7 @@ CREATE TABLE IF NOT EXISTS claimant.accident_details
 
     accident_time TIME,
 
-    accident_type master.accident_type,
+    accident_type VARCHAR(100),
 
     accident_location TEXT,
 
@@ -629,10 +569,6 @@ IS 'Accident details';
 CREATE INDEX IF NOT EXISTS idx_accident_master
 ON claimant.accident_details(master_file_id);
 
--- =============================================================================
--- POLICE INFORMATION
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.police_information
 (
     police_information_id UUID PRIMARY KEY
@@ -659,10 +595,6 @@ CREATE TABLE IF NOT EXISTS claimant.police_information
 
 COMMENT ON TABLE claimant.police_information
 IS 'Police case information';
-
--- =============================================================================
--- HOSPITAL ADMISSIONS
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.hospital_admissions
 (
@@ -691,10 +623,6 @@ CREATE TABLE IF NOT EXISTS claimant.hospital_admissions
 COMMENT ON TABLE claimant.hospital_admissions
 IS 'Hospital admission history';
 
--- =============================================================================
--- RAF INFORMATION
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.raf_information
 (
     raf_information_id UUID PRIMARY KEY
@@ -722,10 +650,6 @@ CREATE TABLE IF NOT EXISTS claimant.raf_information
 COMMENT ON TABLE claimant.raf_information
 IS 'Road Accident Fund information';
 
--- =============================================================================
--- MEDICAL AID
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.medical_aid
 (
     medical_aid_id UUID PRIMARY KEY
@@ -749,10 +673,6 @@ CREATE TABLE IF NOT EXISTS claimant.medical_aid
 
 COMMENT ON TABLE claimant.medical_aid
 IS 'Medical aid information';
-
--- =============================================================================
--- POPIA CONSENT
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.popia_consent
 (
@@ -782,10 +702,6 @@ CREATE TABLE IF NOT EXISTS claimant.popia_consent
 
 COMMENT ON TABLE claimant.popia_consent
 IS 'Claimant POPIA consent history';
-
--- =============================================================================
--- CLAIMANT BANKING DETAILS
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.banking_details
 (
@@ -825,10 +741,6 @@ CREATE TABLE IF NOT EXISTS claimant.banking_details
 COMMENT ON TABLE claimant.banking_details
 IS 'Encrypted claimant banking information';
 
--- =============================================================================
--- APPOINTMENT HISTORY
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.appointment_history
 (
     appointment_history_id UUID PRIMARY KEY
@@ -861,10 +773,6 @@ IS 'Historical appointment register';
 
 CREATE INDEX IF NOT EXISTS idx_claimant_appointment_history
 ON claimant.appointment_history(claimant_id);
-
--- =============================================================================
--- ASSESSMENT HISTORY
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.assessment_history
 (
@@ -899,10 +807,6 @@ CREATE TABLE IF NOT EXISTS claimant.assessment_history
 COMMENT ON TABLE claimant.assessment_history
 IS 'Assessment history';
 
--- =============================================================================
--- COMMUNICATION HISTORY
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.communication_history
 (
     communication_history_id UUID PRIMARY KEY
@@ -930,10 +834,6 @@ CREATE TABLE IF NOT EXISTS claimant.communication_history
 
 COMMENT ON TABLE claimant.communication_history
 IS 'Communication history';
-
--- =============================================================================
--- CLAIMANT DOCUMENT REGISTER
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.documents
 (
@@ -971,10 +871,6 @@ IS 'Claimant document repository';
 CREATE INDEX IF NOT EXISTS idx_claimant_documents
 ON claimant.documents(claimant_id);
 
--- =============================================================================
--- CLAIMANT PORTAL ACCOUNTS
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.portal_accounts
 (
     portal_account_id UUID PRIMARY KEY
@@ -1008,10 +904,6 @@ CREATE TABLE IF NOT EXISTS claimant.portal_accounts
 COMMENT ON TABLE claimant.portal_accounts
 IS 'Claimant portal accounts';
 
--- =============================================================================
--- DOCUMENT SHARING
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.document_sharing
 (
     document_share_id UUID PRIMARY KEY
@@ -1042,10 +934,6 @@ CREATE TABLE IF NOT EXISTS claimant.document_sharing
 COMMENT ON TABLE claimant.document_sharing
 IS 'Secure claimant document sharing';
 
--- =============================================================================
--- INTERNAL NOTES
--- =============================================================================
-
 CREATE TABLE IF NOT EXISTS claimant.internal_notes
 (
     internal_note_id UUID PRIMARY KEY
@@ -1071,10 +959,6 @@ CREATE TABLE IF NOT EXISTS claimant.internal_notes
 
 COMMENT ON TABLE claimant.internal_notes
 IS 'Internal claimant notes';
-
--- =============================================================================
--- CLAIMANT TIMELINE
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.timeline
 (
@@ -1103,10 +987,6 @@ CREATE TABLE IF NOT EXISTS claimant.timeline
 
 COMMENT ON TABLE claimant.timeline
 IS 'Claimant activity timeline';
-
--- =============================================================================
--- CLAIMANT DASHBOARD SUMMARY
--- =============================================================================
 
 CREATE TABLE IF NOT EXISTS claimant.dashboard_summary
 (
@@ -1144,10 +1024,6 @@ CREATE TABLE IF NOT EXISTS claimant.dashboard_summary
 COMMENT ON TABLE claimant.dashboard_summary
 IS 'Claimant dashboard statistics';
 
--- =============================================================================
--- ENTERPRISE CLAIMANT DIRECTORY
--- =============================================================================
-
 CREATE OR REPLACE VIEW claimant.v_claimant_directory
 AS
 SELECT
@@ -1175,10 +1051,6 @@ LEFT JOIN claimant.dashboard_summary ds
 
 COMMENT ON VIEW claimant.v_claimant_directory
 IS 'Enterprise claimant directory';
-
--- =============================================================================
--- DEPLOYMENT VERIFICATION
--- =============================================================================
 
 DO
 $$
