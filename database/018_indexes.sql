@@ -8,14 +8,15 @@ FILE
 018_indexes.sql
 
 VERSION
-1.2 FIXED
+1.3 FIXED
 
 DESCRIPTION
 
 Enterprise Performance & Index Optimization Layer
 
 This version is safe to rerun and aligned to the rewritten schema.
-Fixed PostgreSQL expression-index immutability issues.
+Fixed PostgreSQL expression-index immutability issues and enum-dependent
+partial index failure.
 ===============================================================================
 */
 
@@ -180,8 +181,6 @@ ON reports.reports(medical_expert_id);
 CREATE INDEX IF NOT EXISTS idx_reports_type
 ON reports.reports(report_type);
 
--- Fixed: replaced EXTRACT(YEAR FROM created_at) expression index
--- with a plain timestamp index to avoid IMMUTABLE errors.
 CREATE INDEX IF NOT EXISTS idx_reports_created_at
 ON reports.reports(created_at);
 
@@ -412,8 +411,7 @@ ON reports.reports(report_status)
 WHERE report_status = 'pending';
 
 CREATE INDEX IF NOT EXISTS idx_due_invoices
-ON finance.invoices(due_date)
-WHERE invoice_status = 'outstanding';
+ON finance.invoices(due_date);
 
 CREATE INDEX IF NOT EXISTS idx_unread_notifications
 ON notifications.in_app_notifications(recipient_user_id)
@@ -567,8 +565,6 @@ ON attorney.attorney_firms ((LOWER(registered_name)));
 CREATE INDEX IF NOT EXISTS idx_claimant_fullname
 ON claimant.claimants ((LOWER(first_name || ' ' || last_name)));
 
--- Fixed: replaced EXTRACT(YEAR FROM invoice_date) expression index
--- with a plain date/timestamp index to avoid IMMUTABLE errors.
 CREATE INDEX IF NOT EXISTS idx_invoice_date
 ON finance.invoices(invoice_date);
 
